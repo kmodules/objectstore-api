@@ -21,10 +21,10 @@ please feel free to send a Pull Request.
 If you have a question about kube-mon or having problem using it, you can contact us on our public Slack channel. Follow [this link](https://slack.appscode.com) to get invitation to our Slack channel.
 
 ## Bugs/Feature request
-If you have found a bug with kube-mon or want to request for new features, please [file an issue](https://github.com/kmodules/monitoring-agent-api/issues/new).
+If you have found a bug with kube-mon or want to request for new features, please [file an issue](https://github.com/kmodules/objectstore-api/issues/new).
 
 ## Contribution Flow
-If you fix a bug or developed a new feature, feel free to submit a PR. In either case, please file a [Github issue]((https://github.com/kmodules/monitoring-agent-api/issues/new)) first, so that we can have a discussion on it. This is a rough outline of what a contributor's workflow looks like:
+If you fix a bug or developed a new feature, feel free to submit a PR. In either case, please file a [Github issue]((https://github.com/kmodules/objectstore-api/issues/new)) first, so that we can have a discussion on it. This is a rough outline of what a contributor's workflow looks like:
 
 - Create a topic branch from where you want to base your work (usually master).
 - Make commits of logical units.

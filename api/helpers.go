@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"github.com/pkg/errors"
 )
 
@@ -33,8 +32,4 @@ func (s Backend) Location() (string, error) {
 		return "swift:" + s.Swift.Container, nil
 	}
 	return "", errors.New("no storage provider is configured")
-}
-
-func (s Snapshot) OSMSecretName() string {
-	return fmt.Sprintf("osm-%v", s.Name)
 }

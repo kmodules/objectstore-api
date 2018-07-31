@@ -2,6 +2,7 @@ package api
 
 import (
 	"github.com/pkg/errors"
+	core "k8s.io/api/core/v1"
 )
 
 func (s Backend) Container() (string, error) {
@@ -32,4 +33,17 @@ func (s Backend) Location() (string, error) {
 		return "swift:" + s.Swift.Container, nil
 	}
 	return "", errors.New("no storage provider is configured")
+}
+
+func (l LocalSpec) ToVolumeAndMount(volName string) (core.Volume, core.VolumeMount) {
+	vol := core.Volume{
+		Name:         volName,
+		VolumeSource: *l.VolumeSource.DeepCopy(), // avoid defaulting in MutatingWebhook
+	}
+	mnt := core.VolumeMount{
+		Name:      volName,
+		MountPath: l.MountPath,
+		SubPath:   l.SubPath,
+	}
+	return vol, mnt
 }

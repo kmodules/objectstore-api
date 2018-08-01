@@ -16,7 +16,7 @@ docker run --rm -ti -u $(id -u):$(id -g) \
     appscode/gengo:release-1.11 deepcopy-gen \
     --v 1 --logtostderr \
     --go-header-file "hack/gengo/boilerplate.go.txt" \
-    --input-dirs "$PACKAGE_NAME/api" \
+    --input-dirs "$PACKAGE_NAME/api/v1" \
     --output-file-base zz_generated.deepcopy
 
 # Generate openapi
@@ -26,7 +26,7 @@ docker run --rm -ti -u $(id -u):$(id -g) \
     appscode/gengo:release-1.11 openapi-gen \
     --v 1 --logtostderr \
     --go-header-file "hack/gengo/boilerplate.go.txt" \
-    --input-dirs "$PACKAGE_NAME/api" \
-    --output-package "$PACKAGE_NAME/api"
+    --input-dirs "$PACKAGE_NAME/api/v1" \
+    --output-package "$PACKAGE_NAME/api/v1"
 
 popd

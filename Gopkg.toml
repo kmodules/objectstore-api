@@ -58,21 +58,22 @@
   name = "github.com/pkg/errors"
   version = "0.8.0"
 
-[[constraint]]
-  branch = "master"
+[[override]]
   name = "k8s.io/api"
+  version = "kubernetes-1.11.3"
 
-[[constraint]]
+[[override]]
   name = "k8s.io/apimachinery"
-  version = "kubernetes-1.11.0"
+  branch = "release-1.11.3"
+  source = "github.com/pharmer/apimachinery"
 
-[[constraint]]
+[[override]]
   name = "k8s.io/client-go"
-  version = "=8.0.0"
+  version = "kubernetes-1.11.3"
 
-[[constraint]]
-  branch = "master"
+[[override]]
   name = "k8s.io/kube-openapi"
+  revision = "91cfa479c814065e420cee7ed227db0f63a5854e"
 
 [prune]
   go-tests = true

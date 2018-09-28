@@ -26,20 +26,20 @@
 
 
 [[constraint]]
-  branch = "master"
   name = "github.com/appscode/go"
+  branch = "master"
 
 [[constraint]]
-  branch = "release-8.0"
   name = "github.com/appscode/kutil"
+  branch = "release-9.0"
 
 [[constraint]]
   name = "github.com/appscode/osm"
-  version = "0.7.1"
+  version = "0.9.0"
 
 [[constraint]]
   name = "github.com/aws/aws-sdk-go"
-  version = "=v1.12.7"
+  version = "=v1.14.12"
 
 [[constraint]]
   name = "github.com/ghodss/yaml"
@@ -60,20 +60,20 @@
 
 [[override]]
   name = "k8s.io/api"
-  version = "kubernetes-1.11.3"
+  version = "kubernetes-1.12.0"
 
 [[override]]
   name = "k8s.io/apimachinery"
-  branch = "release-1.11.3"
-  source = "github.com/pharmer/apimachinery"
+  branch = "ac-1.12.0"
+  source = "github.com/kmodules/apimachinery"
 
 [[override]]
   name = "k8s.io/client-go"
-  version = "kubernetes-1.11.3"
+  version = "=v9.0.0"
 
 [[override]]
   name = "k8s.io/kube-openapi"
-  revision = "91cfa479c814065e420cee7ed227db0f63a5854e"
+  revision = "0cf8f7e6ed1d2e3d47d02e3b6e559369af24d803"
 
 [prune]
   go-tests = true

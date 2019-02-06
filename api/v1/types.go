@@ -41,7 +41,7 @@ const (
 )
 
 type Backend struct {
-	StorageSecretName string `json:"storageSecretName,omitempty"`
+	StorageSecret *SecretRef `json:"storageSecret,omitempty"`
 
 	Local *LocalSpec `json:"local,omitempty"`
 	S3    *S3Spec    `json:"s3,omitempty"`
@@ -50,6 +50,11 @@ type Backend struct {
 	Swift *SwiftSpec `json:"swift,omitempty"`
 	B2    *B2Spec    `json:"b2,omitempty"`
 	// Rest  *RestServerSpec `json:"rest,omitempty"`
+}
+
+type SecretRef struct {
+	Name string `json:"name,omitempty"`
+	Namespace string `json:"namespace,omitempty"`
 }
 
 type LocalSpec struct {

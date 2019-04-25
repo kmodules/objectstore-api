@@ -3,6 +3,8 @@ go:
  - 1.x
  - tip
 
+go_import_path: kmodules.xyz/objectstore-api
+
 env:
   - DEP_VERSION="0.4.1"
 
@@ -13,7 +15,7 @@ before_install:
   - chmod +x $GOPATH/bin/dep
 
 install:
-  - dep ensure
+  - dep ensure -vendor-only
 
 script:
  - go build -v ./...

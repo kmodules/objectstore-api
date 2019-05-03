@@ -1,10 +1,7 @@
 package osm
 
 import (
-	"fmt"
-	"io/ioutil"
 	"net/url"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -35,7 +32,6 @@ import (
 const (
 	CaCertFileName  = "ca.crt"
 	SecretMountPath = "/etc/osm"
-	UserCertMountPath = "/tmp/osm/ca.crt"
 )
 
 // NewOSMSecret creates a secret that contains the config file of OSM.
@@ -65,7 +61,7 @@ func NewOSMSecret(client kubernetes.Interface, name, namespace string, spec api.
 	if err != nil {
 		return nil, err
 	}
-	return upserCaCertFile(osmCtx, &core.Secret{
+	return upserCaCertFile(osmCtx,client, namespace, spec,&core.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
@@ -76,13 +72,18 @@ func NewOSMSecret(client kubernetes.Interface, name, namespace string, spec api.
 	})
 }
 
-func upserCaCertFile(osmCtx *otx.Context, secret *core.Secret) (*core.Secret, error) {
+func upserCaCertFile(osmCtx *otx.Context,client kubernetes.Interface, namespace string, spec api.Backend, secret *core.Secret) (*core.Secret, error) {
 	if osmCtx != nil {
-		caCertData, err := ioutil.ReadFile(UserCertMountPath)
-		if err != nil {
-			return nil, fmt.Errorf("error in reading CaCertFile in path %v, err: %v", UserCertMountPath, err)
+		config := make(map[string][]byte)
+
+		if spec.StorageSecretName != "" {
+			sec, err := client.CoreV1().Secrets(namespace).Get(spec.StorageSecretName, metav1.GetOptions{})
+			if err != nil {
+				return nil, err
+			}
+			config = sec.Data
 		}
-		secret.Data[CaCertFileName] = caCertData
+		secret.Data[CaCertFileName] = config[api.CA_CERT_DATA]
 	}
 	return secret, nil
 }
@@ -185,16 +186,8 @@ func NewOSMContext(client kubernetes.Interface, spec api.Backend, namespace stri
 			}
 			nc.Config[s3.ConfigDisableSSL] = strconv.FormatBool(u.Scheme == "http")
 
-			cacertData, ok := config[api.CA_CERT_DATA]
+			_, ok := config[api.CA_CERT_DATA]
 			if ok && u.Scheme == "https" {
-				err = os.MkdirAll(filepath.Dir(UserCertMountPath), 0755)
-				if err != nil {
-					return nil, err
-				}
-				err = ioutil.WriteFile(UserCertMountPath, cacertData, 0755)
-				if err != nil {
-					return nil, err
-				}
 				certFileName := filepath.Join(SecretMountPath, CaCertFileName)
 				nc.Config[s3.ConfigCACertFile] = certFileName
 			}

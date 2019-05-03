@@ -75,15 +75,17 @@ func NewOSMSecret(client kubernetes.Interface, name, namespace string, spec api.
 func upserCaCertFile(osmCtx *otx.Context,client kubernetes.Interface, namespace string, spec api.Backend, secret *core.Secret) (*core.Secret, error) {
 	if osmCtx != nil {
 		config := make(map[string][]byte)
-
-		if spec.StorageSecretName != "" {
+		if spec.StorageSecretName != ""  && spec.S3 != nil {
 			sec, err := client.CoreV1().Secrets(namespace).Get(spec.StorageSecretName, metav1.GetOptions{})
 			if err != nil {
 				return nil, err
 			}
 			config = sec.Data
 		}
-		secret.Data[CaCertFileName] = config[api.CA_CERT_DATA]
+		certData,ok := config[api.CA_CERT_DATA]
+		if ok{
+			secret.Data[CaCertFileName] = certData
+		}
 	}
 	return secret, nil
 }

@@ -29,14 +29,13 @@ import (
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	meta_util "kmodules.xyz/client-go/meta"
 	api "kmodules.xyz/objectstore-api/api/v1"
 )
 
 const (
 	CaCertFileName  = "ca.crt"
 	SecretMountPath = "/etc/osm"
-	UserCertMountPath = "/tmp/osm"
+	UserCertMountPath = "/tmp/osm/ca.crt"
 )
 
 // NewOSMSecret creates a secret that contains the config file of OSM.
@@ -79,13 +78,11 @@ func NewOSMSecret(client kubernetes.Interface, name, namespace string, spec api.
 
 func upserCaCertFile(osmCtx *otx.Context, secret *core.Secret) (*core.Secret, error) {
 	if osmCtx != nil {
-		if certFileName, err := meta_util.GetStringValue(osmCtx.Config, s3.ConfigCACertFile); err == nil {
-			caCertData, err := ioutil.ReadFile(certFileName)
-			if err != nil {
-				return nil, fmt.Errorf("error in reading CaCertFile in path %v, err: %v", certFileName, err)
-			}
-			secret.Data[CaCertFileName] = caCertData
+		caCertData, err := ioutil.ReadFile(UserCertMountPath)
+		if err != nil {
+			return nil, fmt.Errorf("error in reading CaCertFile in path %v, err: %v", UserCertMountPath, err)
 		}
+		secret.Data[CaCertFileName] = caCertData
 	}
 	return secret, nil
 }
@@ -190,15 +187,15 @@ func NewOSMContext(client kubernetes.Interface, spec api.Backend, namespace stri
 
 			cacertData, ok := config[api.CA_CERT_DATA]
 			if ok && u.Scheme == "https" {
-				certFileName := filepath.Join(UserCertMountPath, CaCertFileName)
-				err = os.MkdirAll(filepath.Dir(certFileName), 0755)
+				err = os.MkdirAll(filepath.Dir(UserCertMountPath), 0755)
 				if err != nil {
 					return nil, err
 				}
-				err = ioutil.WriteFile(certFileName, cacertData, 0755)
+				err = ioutil.WriteFile(UserCertMountPath, cacertData, 0755)
 				if err != nil {
 					return nil, err
 				}
+				certFileName := filepath.Join(SecretMountPath, CaCertFileName)
 				nc.Config[s3.ConfigCACertFile] = certFileName
 			}
 		}

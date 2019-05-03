@@ -34,8 +34,9 @@ import (
 )
 
 const (
-	SecretMountPath = "/etc/osm"
 	CaCertFileName  = "ca.crt"
+	SecretMountPath = "/etc/osm"
+	UserCertMountPath = "/tmp/osm"
 )
 
 // NewOSMSecret creates a secret that contains the config file of OSM.
@@ -189,7 +190,7 @@ func NewOSMContext(client kubernetes.Interface, spec api.Backend, namespace stri
 
 			cacertData, ok := config[api.CA_CERT_DATA]
 			if ok && u.Scheme == "https" {
-				certFileName := filepath.Join(SecretMountPath, CaCertFileName)
+				certFileName := filepath.Join(UserCertMountPath, CaCertFileName)
 				err = os.MkdirAll(filepath.Dir(certFileName), 0755)
 				if err != nil {
 					return nil, err

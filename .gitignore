@@ -27,4 +27,3 @@ dist/
 **/junit.xml
 **/.env
 .vscode/
-vendor/

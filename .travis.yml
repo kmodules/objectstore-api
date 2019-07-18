@@ -15,9 +15,6 @@ cache:
   - $HOME/.cache/go-build
   - $GOPATH/pkg/mod
 
-env:
-  - GO111MODULE=on
-
 install: true
 
 script:

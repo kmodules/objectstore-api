@@ -168,7 +168,7 @@ github.com/kisielk/errcheck v1.1.0/go.mod h1:EZBBE59ingxPouuu3KfxchcWSUPOHkagtvW
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
 github.com/kmodules/apimachinery v0.0.0-20190508045248-a52a97a7a2bf h1:XUigLZjjxvtR+TD7mncq0wUOaaG2H/zslqM42crk0SY=
 github.com/kmodules/apimachinery v0.0.0-20190508045248-a52a97a7a2bf/go.mod h1:1nbDY1cBTGna53FTjqnehJWker1BB75r+ElWRqNcYo8=
-github.com/kmodules/apiserver v0.0.0-20190508082252-8397d761d4b5/go.mod h1:rMEImsX8dFD0jGmDQXq3zbWddcIU8vlcrMWPzpXEm9g=
+github.com/kmodules/apiserver v0.0.0-20190811223248-5a95b2df4348/go.mod h1:rMEImsX8dFD0jGmDQXq3zbWddcIU8vlcrMWPzpXEm9g=
 github.com/konsorten/go-windows-terminal-sequences v1.0.1/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
 github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515/go.mod h1:+0opPa2QZZtGFBFZlji/RkVcI2GknAs/DXo4wKdlNEc=
 github.com/kr/pretty v0.1.0 h1:L/CwN0zerZDmRFUapSPitk6f+Q3+0za1rQkzVuMiMFI=

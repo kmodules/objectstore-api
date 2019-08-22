@@ -30,6 +30,8 @@ func (backend Backend) Container() (string, error) {
 		return backend.Local.MountPath, nil
 	} else if backend.Swift != nil {
 		return backend.Swift.Container, nil
+	} else if backend.Rest != nil {
+		return backend.Rest.URL, nil
 	}
 	return "", errors.New("no storage provider is configured")
 }
@@ -46,6 +48,8 @@ func (backend Backend) Location() (string, error) {
 		return "local:" + backend.Local.MountPath, nil
 	} else if backend.Swift != nil {
 		return "swift:" + backend.Swift.Container, nil
+	} else if backend.Rest != nil {
+		return "rest:" + backend.Rest.URL, nil
 	}
 	return "", errors.New("no storage provider is configured")
 }

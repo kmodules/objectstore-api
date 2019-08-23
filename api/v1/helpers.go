@@ -1,7 +1,7 @@
 package v1
 
 import (
-	"path/filepath"
+	"net/url"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -30,8 +30,6 @@ func (backend Backend) Container() (string, error) {
 		return backend.Local.MountPath, nil
 	} else if backend.Swift != nil {
 		return backend.Swift.Container, nil
-	} else if backend.Rest != nil {
-		return backend.Rest.URL, nil
 	}
 	return "", errors.New("no storage provider is configured")
 }
@@ -48,8 +46,6 @@ func (backend Backend) Location() (string, error) {
 		return "local:" + backend.Local.MountPath, nil
 	} else if backend.Swift != nil {
 		return "swift:" + backend.Swift.Container, nil
-	} else if backend.Rest != nil {
-		return "rest:" + backend.Rest.URL, nil
 	}
 	return "", errors.New("no storage provider is configured")
 }
@@ -71,7 +67,7 @@ func (l LocalSpec) ToVolumeAndMount(volName string) (core.Volume, core.VolumeMou
 // GetBucket returns bucket name used in the backend
 func (backend Backend) GetBucket() (string, error) {
 	if backend.Local != nil {
-		return "", nil
+		return backend.Local.MountPath, nil
 	} else if backend.S3 != nil {
 		return backend.S3.Bucket, nil
 	} else if backend.GCS != nil {
@@ -81,17 +77,21 @@ func (backend Backend) GetBucket() (string, error) {
 	} else if backend.Swift != nil {
 		return backend.Swift.Container, nil
 	} else if backend.Rest != nil {
-		return "", nil
+		serverAddress, _, err := parseURL(backend.Rest.URL)
+		if err != nil {
+			return "", err
+		}
+		return serverAddress, nil
 	}
-	return "", errors.New("unknown backend type.")
+	return "", errors.New("failed to get bucket. Reason: Unknown backend type.")
 }
 
 // GetPrefix returns the prefix used in the backend
 func (backend Backend) GetPrefix() (string, error) {
 	if backend.Local != nil {
-		return filepath.Join(backend.Local.MountPath, strings.TrimPrefix(backend.Local.SubPath, "/")), nil
+		return "", nil
 	} else if backend.S3 != nil {
-		return strings.TrimPrefix(backend.S3.Prefix, backend.S3.Bucket+"/"), nil
+		return backend.S3.Prefix, nil
 	} else if backend.GCS != nil {
 		return backend.GCS.Prefix, nil
 	} else if backend.Azure != nil {
@@ -99,9 +99,13 @@ func (backend Backend) GetPrefix() (string, error) {
 	} else if backend.Swift != nil {
 		return backend.Swift.Prefix, nil
 	} else if backend.Rest != nil {
-		return "", nil
+		_, path, err := parseURL(backend.Rest.URL)
+		if err != nil {
+			return "", err
+		}
+		return path, nil
 	}
-	return "", errors.New("unknown backend type.")
+	return "", errors.New("failed to get prefix. Reason: Unknown backend type.")
 }
 
 // GetProvider returns the provider of the backend
@@ -151,4 +155,14 @@ func (backend *Backend) GetRestUrl() string {
 		return backend.Rest.URL
 	}
 	return ""
+}
+
+func parseURL(link string) (string, string, error) {
+	u, err := url.Parse(link)
+	if err != nil {
+		return "", "", err
+	}
+	path := u.Path
+	server := strings.TrimSuffix(link, path)
+	return server, path, nil
 }

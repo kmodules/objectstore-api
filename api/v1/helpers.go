@@ -68,22 +68,40 @@ func (l LocalSpec) ToVolumeAndMount(volName string) (core.Volume, core.VolumeMou
 	return vol, mnt
 }
 
-// GetBucketAndPrefix return bucket and the prefix used in the backend
-func (backend Backend) GetBucketAndPrefix() (string, string, error) {
+// GetBucket returns bucket name used in the backend
+func (backend Backend) GetBucket() (string, error) {
 	if backend.Local != nil {
-		return "", filepath.Join(backend.Local.MountPath, strings.TrimPrefix(backend.Local.SubPath, "/")), nil
+		return "", nil
 	} else if backend.S3 != nil {
-		return backend.S3.Bucket, strings.TrimPrefix(backend.S3.Prefix, backend.S3.Bucket+"/"), nil
+		return backend.S3.Bucket, nil
 	} else if backend.GCS != nil {
-		return backend.GCS.Bucket, backend.GCS.Prefix, nil
+		return backend.GCS.Bucket, nil
 	} else if backend.Azure != nil {
-		return backend.Azure.Container, backend.Azure.Prefix, nil
+		return backend.Azure.Container, nil
 	} else if backend.Swift != nil {
-		return backend.Swift.Container, backend.Swift.Prefix, nil
+		return backend.Swift.Container, nil
 	} else if backend.Rest != nil {
-		return "", "", nil
+		return "", nil
 	}
-	return "", "", errors.New("unknown backend type.")
+	return "", errors.New("unknown backend type.")
+}
+
+// GetPrefix returns the prefix used in the backend
+func (backend Backend) GetPrefix() (string, error) {
+	if backend.Local != nil {
+		return filepath.Join(backend.Local.MountPath, strings.TrimPrefix(backend.Local.SubPath, "/")), nil
+	} else if backend.S3 != nil {
+		return strings.TrimPrefix(backend.S3.Prefix, backend.S3.Bucket+"/"), nil
+	} else if backend.GCS != nil {
+		return backend.GCS.Prefix, nil
+	} else if backend.Azure != nil {
+		return backend.Azure.Prefix, nil
+	} else if backend.Swift != nil {
+		return backend.Swift.Prefix, nil
+	} else if backend.Rest != nil {
+		return "", nil
+	}
+	return "", errors.New("unknown backend type.")
 }
 
 // GetProvider returns the provider of the backend

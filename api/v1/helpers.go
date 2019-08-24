@@ -124,18 +124,12 @@ func (backend Backend) MaxConnections() int {
 	return 0
 }
 
-// Endpoint returns endpoint of S3/S3 compatible backend
-func (backend Backend) Endpoint() string {
+// Endpoint returns endpoint of Restic rest server and S3/S3 compatible backend
+func (backend Backend) Endpoint() (string, bool) {
 	if backend.S3 != nil {
-		return backend.S3.Endpoint
+		return backend.S3.Endpoint, true
+	} else if backend.Rest != nil {
+		return backend.Rest.URL, true
 	}
-	return ""
-}
-
-// RestURL returns the URL of REST backend
-func (backend *Backend) RestURL() string {
-	if backend.Rest != nil {
-		return backend.Rest.URL
-	}
-	return ""
+	return "", false
 }

@@ -3,7 +3,7 @@ module kmodules.xyz/objectstore-api
 go 1.12
 
 require (
-	github.com/appscode/go v0.0.0-20190808133642-1d4ef1f1c1e0
+	github.com/appscode/go v0.0.0-20191006073906-e3d193d493fc
 	github.com/appscode/osm v0.12.0
 	github.com/aws/aws-sdk-go v1.20.20
 	github.com/census-instrumentation/opencensus-proto v0.1.0 // indirect

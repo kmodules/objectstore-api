@@ -20,7 +20,8 @@ github.com/Azure/go-autorest/tracing
 github.com/PuerkitoBio/purell
 # github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578
 github.com/PuerkitoBio/urlesc
-# github.com/appscode/go v0.0.0-20190808133642-1d4ef1f1c1e0
+# github.com/appscode/go v0.0.0-20191006073906-e3d193d493fc
+github.com/appscode/go/os
 github.com/appscode/go/strings
 github.com/appscode/go/types
 github.com/appscode/go/encoding/yaml

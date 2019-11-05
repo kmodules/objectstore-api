@@ -16,7 +16,6 @@ type test struct {
 	expectedLocation      string
 	expectedProvider      string
 	expectedEndpoint      string
-	expected              bool
 }
 
 var testCases = func() []test {
@@ -87,7 +86,7 @@ var testCases = func() []test {
 				StorageSecretName: "gcs-secret",
 			},
 			expectedContainer:     "stash-backup",
-			expectedLocation:      fmt.Sprintf("%s:%s", ProviderGCS, "stash-backup"),
+			expectedLocation:      fmt.Sprintf("%s:%s", "gs", "stash-backup"),
 			expectedPrefix:        "/source/data",
 			expectedProvider:      ProviderGCS,
 			expectedMaxConnection: 2,
@@ -148,23 +147,13 @@ var testCases = func() []test {
 func TestBackend_Container(t *testing.T) {
 	for _, tt := range testCases() {
 		t.Run(tt.name, func(t *testing.T) {
-			backend := Backend{
-				StorageSecretName: tt.backend.StorageSecretName,
-				Local:             tt.backend.Local,
-				S3:                tt.backend.S3,
-				GCS:               tt.backend.GCS,
-				Azure:             tt.backend.Azure,
-				Swift:             tt.backend.Swift,
-				B2:                tt.backend.B2,
-				Rest:              tt.backend.Rest,
-			}
-			got, err := backend.Container()
-			if (err != nil) != tt.expected {
-				t.Errorf("Backend.Container() error = %v, expectedErr %v", err, tt.expected)
+			container, err := tt.backend.Container()
+			if err != nil {
+				t.Errorf("fail to get container, reason: %v", err)
 				return
 			}
-			if got != tt.expectedContainer {
-				t.Errorf("Backend.Container() = %v, expected result %v", got, tt.expectedContainer)
+			if container != tt.expectedContainer {
+				t.Errorf("expected Container: %v, found: %v", tt.expectedContainer, container)
 			}
 		})
 	}
@@ -173,24 +162,13 @@ func TestBackend_Container(t *testing.T) {
 func TestBackend_Location(t *testing.T) {
 	for _, tt := range testCases() {
 		t.Run(tt.name, func(t *testing.T) {
-			backend := Backend{
-				StorageSecretName: tt.backend.StorageSecretName,
-				Local:             tt.backend.Local,
-				S3:                tt.backend.S3,
-				GCS:               tt.backend.GCS,
-				Azure:             tt.backend.Azure,
-				Swift:             tt.backend.Swift,
-				B2:                tt.backend.B2,
-				Rest:              tt.backend.Rest,
-			}
-			got, err := backend.Location()
-			if (err != nil) != tt.expected && backend.Rest == nil {
-				t.Errorf("Backend.Location() error = %v, expectedErr %v", err, tt.expected)
+			location, err := tt.backend.Location()
+			if err != nil && tt.backend.Rest == nil {
+				t.Errorf("fail to get location, reason: %v", err)
 				return
 			}
-
-			if got != tt.expectedLocation {
-				t.Errorf("Backend.Location() = %v, expected result %v", got, tt.expectedLocation)
+			if location != tt.expectedLocation {
+				t.Errorf("expected Location: %v, found: %v", tt.expectedLocation, location)
 			}
 		})
 	}
@@ -199,23 +177,13 @@ func TestBackend_Location(t *testing.T) {
 func TestBackend_Prefix(t *testing.T) {
 	for _, tt := range testCases() {
 		t.Run(tt.name, func(t *testing.T) {
-			backend := Backend{
-				StorageSecretName: tt.backend.StorageSecretName,
-				Local:             tt.backend.Local,
-				S3:                tt.backend.S3,
-				GCS:               tt.backend.GCS,
-				Azure:             tt.backend.Azure,
-				Swift:             tt.backend.Swift,
-				B2:                tt.backend.B2,
-				Rest:              tt.backend.Rest,
-			}
-			got, err := backend.Prefix()
-			if (err != nil) != tt.expected {
-				t.Errorf("Backend.Prefix() error = %v, expectedErr %v", err, tt.expected)
+			prefix, err := tt.backend.Prefix()
+			if err != nil {
+				t.Errorf("fail to get prefix, reason: %v", err)
 				return
 			}
-			if got != tt.expectedPrefix {
-				t.Errorf("Backend.Prefix() = %v, expected result %v", got, tt.expectedPrefix)
+			if prefix != tt.expectedPrefix {
+				t.Errorf("expected prefix: %v, found: %v", tt.expectedPrefix,  prefix)
 			}
 		})
 	}
@@ -224,23 +192,13 @@ func TestBackend_Prefix(t *testing.T) {
 func TestBackend_Provider(t *testing.T) {
 	for _, tt := range testCases() {
 		t.Run(tt.name, func(t *testing.T) {
-			backend := Backend{
-				StorageSecretName: tt.backend.StorageSecretName,
-				Local:             tt.backend.Local,
-				S3:                tt.backend.S3,
-				GCS:               tt.backend.GCS,
-				Azure:             tt.backend.Azure,
-				Swift:             tt.backend.Swift,
-				B2:                tt.backend.B2,
-				Rest:              tt.backend.Rest,
-			}
-			got, err := backend.Provider()
-			if (err != nil) != tt.expected {
-				t.Errorf("Backend.Provider() error = %v, expectedErr %v", err, tt.expected)
+			provider, err := tt.backend.Provider()
+			if err != nil {
+				t.Errorf("fail to get provider, reason: %v", err)
 				return
 			}
-			if got != tt.expectedProvider {
-				t.Errorf("Backend.Provider() = %v, expected  result %v", got, tt.expectedProvider)
+			if provider != tt.expectedProvider {
+				t.Errorf("expected provider: %v, found: %v", tt.expectedProvider, provider)
 			}
 		})
 	}
@@ -249,19 +207,9 @@ func TestBackend_Provider(t *testing.T) {
 func TestBackend_MaxConnections(t *testing.T) {
 	for _, tt := range testCases() {
 		t.Run(tt.name, func(t *testing.T) {
-			backend := Backend{
-				StorageSecretName: tt.backend.StorageSecretName,
-				Local:             tt.backend.Local,
-				S3:                tt.backend.S3,
-				GCS:               tt.backend.GCS,
-				Azure:             tt.backend.Azure,
-				Swift:             tt.backend.Swift,
-				B2:                tt.backend.B2,
-				Rest:              tt.backend.Rest,
-			}
-			got := backend.MaxConnections()
-			if got != tt.expectedMaxConnection {
-				t.Errorf("Backend.MaxConnection() = %v, expected result %v", got, tt.expectedMaxConnection)
+			maxConnection := tt.backend.MaxConnections()
+			if maxConnection != tt.expectedMaxConnection {
+				t.Errorf("expected maxconnection: %v, found: %v", tt.expectedMaxConnection, maxConnection)
 			}
 		})
 	}
@@ -270,23 +218,13 @@ func TestBackend_MaxConnections(t *testing.T) {
 func TestBackend_Endpoint(t *testing.T) {
 	for _, tt := range testCases() {
 		t.Run(tt.name, func(t *testing.T) {
-			backend := Backend{
-				StorageSecretName: tt.backend.StorageSecretName,
-				Local:             tt.backend.Local,
-				S3:                tt.backend.S3,
-				GCS:               tt.backend.GCS,
-				Azure:             tt.backend.Azure,
-				Swift:             tt.backend.Swift,
-				B2:                tt.backend.B2,
-				Rest:              tt.backend.Rest,
-			}
-			got, ok := backend.Endpoint()
-			if !ok != tt.expected && (backend.S3 != nil || backend.Rest != nil) {
-				t.Errorf("Backend.Endpoint() got = %v, expected %v", ok, tt.expected)
+			endpoint, ok := tt.backend.Endpoint()
+			if !ok && (tt.backend.S3 != nil || tt.backend.Rest != nil) {
+				t.Errorf("fail to get endpoint")
 				return
 			}
-			if got != tt.expectedEndpoint {
-				t.Errorf("Backend.MaxConnection() = %v, expected result %v", got, tt.expectedEndpoint)
+			if endpoint != tt.expectedEndpoint {
+				t.Errorf("expected endpoint: %v, found: %v", tt.expectedEndpoint, endpoint)
 				return
 			}
 		})

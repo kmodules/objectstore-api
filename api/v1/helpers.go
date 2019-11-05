@@ -46,14 +46,14 @@ func (backend Backend) Location() (string, error) {
 	if backend.S3 != nil {
 		return "s3:" + backend.S3.Bucket, nil
 	} else if backend.GCS != nil {
-		return "gs:" + backend.GCS.Bucket, nil
+		return "gcs:" + backend.GCS.Bucket, nil
 	} else if backend.Azure != nil {
 		return "azure:" + backend.Azure.Container, nil
 	} else if backend.Local != nil {
 		return "local:" + backend.Local.MountPath, nil
 	} else if backend.Swift != nil {
 		return "swift:" + backend.Swift.Container, nil
-	} else if backend.B2 != nil{
+	} else if backend.B2 != nil {
 		return "b2:" + backend.B2.Bucket, nil
 	}
 	return "", errors.New("no storage provider is configured")

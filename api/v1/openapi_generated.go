@@ -61,7 +61,7 @@ func schema_kmodulesxyz_objectstore_api_api_v1_AzureSpec(ref common.ReferenceCal
 					"maxConnections": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
-							Format: "int32",
+							Format: "int64",
 						},
 					},
 				},
@@ -91,7 +91,7 @@ func schema_kmodulesxyz_objectstore_api_api_v1_B2Spec(ref common.ReferenceCallba
 					"maxConnections": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
-							Format: "int32",
+							Format: "int64",
 						},
 					},
 				},
@@ -176,7 +176,7 @@ func schema_kmodulesxyz_objectstore_api_api_v1_GCSSpec(ref common.ReferenceCallb
 					"maxConnections": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
-							Format: "int32",
+							Format: "int64",
 						},
 					},
 				},

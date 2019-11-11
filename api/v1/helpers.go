@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package v1
 
 import (
@@ -134,7 +135,7 @@ func (backend Backend) Provider() (string, error) {
 
 // MaxConnections returns maximum parallel connection to use to connect with the backend
 // returns 0 if not specified
-func (backend Backend) MaxConnections() int {
+func (backend Backend) MaxConnections() int64 {
 	if backend.GCS != nil {
 		return backend.GCS.MaxConnections
 	} else if backend.Azure != nil {

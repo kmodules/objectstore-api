@@ -32,6 +32,7 @@ type test struct {
 	expectedLocation      string
 	expectedProvider      string
 	expectedEndpoint      string
+	expectedRegion        string
 }
 
 var testCases = func() []test {
@@ -52,6 +53,7 @@ var testCases = func() []test {
 			expectedProvider:      ProviderB2,
 			expectedMaxConnection: 2,
 			expectedEndpoint:      "",
+			expectedRegion:        "",
 		},
 		{
 			name: ProviderLocal,
@@ -73,6 +75,7 @@ var testCases = func() []test {
 			expectedProvider:      ProviderLocal,
 			expectedMaxConnection: 0,
 			expectedEndpoint:      "",
+			expectedRegion:        "",
 		},
 		{
 			name: ProviderS3,
@@ -90,6 +93,26 @@ var testCases = func() []test {
 			expectedProvider:      ProviderS3,
 			expectedMaxConnection: 0,
 			expectedEndpoint:      "s3.amazonaws.com",
+			expectedRegion:        "",
+		},
+		{
+			name: ProviderS3 + "_with_region",
+			backend: Backend{
+				S3: &S3Spec{
+					Bucket:   "stash-backup",
+					Prefix:   "/source/data",
+					Endpoint: "s3.amazonaws.com",
+					Region:   "my.custom.region",
+				},
+				StorageSecretName: "s3-secret",
+			},
+			expectedContainer:     "stash-backup",
+			expectedLocation:      fmt.Sprintf("%s:%s", ProviderS3, "stash-backup"),
+			expectedPrefix:        "/source/data",
+			expectedProvider:      ProviderS3,
+			expectedMaxConnection: 0,
+			expectedEndpoint:      "s3.amazonaws.com",
+			expectedRegion:        "my.custom.region",
 		},
 		{
 			name: ProviderGCS,
@@ -107,6 +130,7 @@ var testCases = func() []test {
 			expectedProvider:      ProviderGCS,
 			expectedMaxConnection: 2,
 			expectedEndpoint:      "",
+			expectedRegion:        "",
 		},
 		{
 			name: ProviderAzure,
@@ -124,6 +148,7 @@ var testCases = func() []test {
 			expectedProvider:      ProviderAzure,
 			expectedMaxConnection: 2,
 			expectedEndpoint:      "",
+			expectedRegion:        "",
 		},
 		{
 			name: ProviderSwift,
@@ -140,6 +165,7 @@ var testCases = func() []test {
 			expectedProvider:      ProviderSwift,
 			expectedMaxConnection: 0,
 			expectedEndpoint:      "",
+			expectedRegion:        "",
 		},
 		{
 			name: ProviderRest,
@@ -155,6 +181,7 @@ var testCases = func() []test {
 			expectedProvider:      ProviderRest,
 			expectedMaxConnection: 0,
 			expectedEndpoint:      "http://rest-server.demo.svc:8000/stash-backup",
+			expectedRegion:        "",
 		},
 	}
 
@@ -241,6 +268,22 @@ func TestBackend_Endpoint(t *testing.T) {
 			}
 			if endpoint != tt.expectedEndpoint {
 				t.Errorf("expected endpoint: %v, found: %v", tt.expectedEndpoint, endpoint)
+				return
+			}
+		})
+	}
+}
+
+func TestBackend_Region(t *testing.T) {
+	for _, tt := range testCases() {
+		t.Run(tt.name, func(t *testing.T) {
+			region, ok := tt.backend.Region()
+			if !ok && tt.backend.S3 != nil {
+				t.Errorf("fail to get region")
+				return
+			}
+			if region != tt.expectedRegion {
+				t.Errorf("expected region: %v, found: %v", tt.expectedRegion, region)
 				return
 			}
 		})

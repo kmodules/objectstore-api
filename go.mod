@@ -3,7 +3,7 @@ module kmodules.xyz/objectstore-api
 go 1.12
 
 require (
-	github.com/appscode/osm v0.15.0
+	github.com/appscode/osm v0.15.1
 	github.com/aws/aws-sdk-go v1.20.20
 	github.com/go-openapi/spec v0.19.3
 	github.com/gogo/protobuf v1.3.1

@@ -4,19 +4,16 @@ go 1.12
 
 require (
 	github.com/Azure/azure-sdk-for-go v35.0.0+incompatible // indirect
-	github.com/appscode/go v0.0.0-20200323182826-54e98e09185a
 	github.com/appscode/osm v0.14.0
 	github.com/aws/aws-sdk-go v1.28.2
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-openapi/spec v0.19.3
 	github.com/gogo/protobuf v1.3.1
-	github.com/golang/protobuf v1.4.3 // indirect
 	github.com/google/go-cmp v0.4.0 // indirect
-	github.com/google/uuid v1.1.2 // indirect
 	github.com/pkg/errors v0.9.1
-	github.com/spf13/cobra v1.1.1 // indirect
-	github.com/stretchr/testify v1.5.1 // indirect
+	gomodules.xyz/pointer v0.0.0-20201105071923-daf60fa55209
 	gomodules.xyz/stow v0.2.4
+	gomodules.xyz/x v0.0.0-20201105065653-91c568df6331
 	k8s.io/api v0.18.9
 	k8s.io/apimachinery v0.18.9
 	k8s.io/client-go v0.18.9

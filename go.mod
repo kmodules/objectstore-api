@@ -10,13 +10,18 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-openapi/spec v0.19.3
 	github.com/gogo/protobuf v1.3.1
-	github.com/pkg/errors v0.8.1
+	github.com/golang/protobuf v1.4.3 // indirect
+	github.com/google/go-cmp v0.4.0 // indirect
+	github.com/google/uuid v1.1.2 // indirect
+	github.com/pkg/errors v0.9.1
+	github.com/spf13/cobra v1.1.1 // indirect
+	github.com/stretchr/testify v1.5.1 // indirect
 	gomodules.xyz/stow v0.2.4
 	k8s.io/api v0.18.9
 	k8s.io/apimachinery v0.18.9
 	k8s.io/client-go v0.18.9
 	k8s.io/kube-openapi v0.0.0-20200410145947-61e04a5be9a6
-	kmodules.xyz/constants v0.0.0-20200506032633-a21e58ceec72
+	kmodules.xyz/constants v0.0.0-20200923054614-6b87dbbae4d6
 )
 
 replace bitbucket.org/ww/goautoneg => gomodules.xyz/goautoneg v0.0.0-20120707110453-a547fc61f48d

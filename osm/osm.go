@@ -38,7 +38,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/ec2metadata"
 	"github.com/aws/aws-sdk-go/aws/session"
 	_s3 "github.com/aws/aws-sdk-go/service/s3"
-	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	"gomodules.xyz/pointer"
 	"gomodules.xyz/stow"
@@ -51,6 +50,7 @@ import (
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/yaml"
 )
 
 const (

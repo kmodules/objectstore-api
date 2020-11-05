@@ -3,13 +3,10 @@ module kmodules.xyz/objectstore-api
 go 1.12
 
 require (
-	github.com/Azure/azure-sdk-for-go v35.0.0+incompatible // indirect
-	github.com/appscode/osm v0.14.0
-	github.com/aws/aws-sdk-go v1.28.2
-	github.com/ghodss/yaml v1.0.0
+	github.com/appscode/osm v0.15.0
+	github.com/aws/aws-sdk-go v1.20.20
 	github.com/go-openapi/spec v0.19.3
 	github.com/gogo/protobuf v1.3.1
-	github.com/google/go-cmp v0.4.0 // indirect
 	github.com/pkg/errors v0.9.1
 	gomodules.xyz/pointer v0.0.0-20201105071923-daf60fa55209
 	gomodules.xyz/stow v0.2.4
@@ -19,6 +16,7 @@ require (
 	k8s.io/client-go v0.18.9
 	k8s.io/kube-openapi v0.0.0-20200410145947-61e04a5be9a6
 	kmodules.xyz/constants v0.0.0-20200923054614-6b87dbbae4d6
+	sigs.k8s.io/yaml v1.2.0
 )
 
 replace bitbucket.org/ww/goautoneg => gomodules.xyz/goautoneg v0.0.0-20120707110453-a547fc61f48d

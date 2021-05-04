@@ -3,21 +3,19 @@ module kmodules.xyz/objectstore-api
 go 1.15
 
 require (
-	github.com/Azure/azure-sdk-for-go v43.0.0+incompatible // indirect
-	github.com/appscode/osm v0.16.0
-	github.com/aws/aws-sdk-go v1.35.24
-	github.com/go-openapi/spec v0.19.5
+	github.com/aws/aws-sdk-go v1.38.31
+	github.com/go-openapi/spec v0.19.3
 	github.com/gogo/protobuf v1.3.2
 	github.com/pkg/errors v0.9.1
+	github.com/spf13/cobra v1.1.3
 	gomodules.xyz/pointer v0.0.0-20201105071923-daf60fa55209
-	gomodules.xyz/stow v0.2.3
-	gomodules.xyz/x v0.0.0-20201105065653-91c568df6331
-	google.golang.org/appengine v1.6.5 // indirect
+	gomodules.xyz/stow v0.2.4
+	gomodules.xyz/x v0.0.3
 	k8s.io/api v0.21.0
 	k8s.io/apimachinery v0.21.0
 	k8s.io/client-go v0.21.0
+	k8s.io/klog/v2 v2.8.0
 	k8s.io/kube-openapi v0.0.0-20210305001622-591a79e4bda7
-	k8s.io/utils v0.0.0-20210111153108-fddb29f9d009 // indirect
 	kmodules.xyz/constants v0.0.0-20210218100002-2c304bfda278
 	sigs.k8s.io/yaml v1.2.0
 )

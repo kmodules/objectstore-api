@@ -25,7 +25,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"gomodules.xyz/stow"
-	yc "gomodules.xyz/x/encoding/yaml"
+	yc "gomodules.xyz/encoding/yaml"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/yaml"
 )

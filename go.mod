@@ -4,19 +4,29 @@ go 1.15
 
 require (
 	github.com/aws/aws-sdk-go v1.38.31
-	github.com/go-openapi/spec v0.19.3
+	github.com/emicklei/go-restful v2.9.5+incompatible // indirect
+	github.com/go-openapi/spec v0.19.5
 	github.com/gogo/protobuf v1.3.2
+	github.com/google/go-cmp v0.5.6 // indirect
+	github.com/googleapis/gnostic v0.5.5 // indirect
+	github.com/mailru/easyjson v0.7.0 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.1.3
+	golang.org/x/crypto v0.0.0-20210314154223-e6e6c4f2bb5b // indirect
+	golang.org/x/net v0.0.0-20210428140749-89ef3d95e781 // indirect
 	gomodules.xyz/encoding v0.0.2
 	gomodules.xyz/pointer v0.1.0
 	gomodules.xyz/stow v0.2.4
-	gomodules.xyz/x v0.0.7
+	gomodules.xyz/x v0.0.8
+	google.golang.org/appengine v1.6.7 // indirect
+	google.golang.org/genproto v0.0.0-20201110150050-8816d57aaa9a // indirect
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	k8s.io/api v0.21.1
 	k8s.io/apimachinery v0.21.1
 	k8s.io/client-go v0.21.1
 	k8s.io/klog/v2 v2.8.0
 	k8s.io/kube-openapi v0.0.0-20210305001622-591a79e4bda7
+	k8s.io/utils v0.0.0-20210527160623-6fdb442a123b // indirect
 	kmodules.xyz/constants v0.0.0-20210218100002-2c304bfda278
 	sigs.k8s.io/yaml v1.2.0
 )
@@ -103,13 +113,13 @@ replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20201110
 
 replace google.golang.org/grpc => google.golang.org/grpc v1.27.1
 
-replace helm.sh/helm/v3 => github.com/kubepack/helm/v3 v3.1.0-rc.1.0.20210503022716-7e2d4913a125
+replace helm.sh/helm/v3 => github.com/kubepack/helm/v3 v3.6.1-0.20210518225915-c3e0ce48dd1b
 
 replace k8s.io/api => k8s.io/api v0.21.1
 
 replace k8s.io/apimachinery => github.com/kmodules/apimachinery v0.21.2-rc.0.0.20210617231004-332981b97d2d
 
-replace k8s.io/apiserver => github.com/kmodules/apiserver v0.21.2-0.20210617231348-daadbf0c8d5e
+replace k8s.io/apiserver => github.com/kmodules/apiserver v0.21.2-0.20210716212718-83e5493ac170
 
 replace k8s.io/cli-runtime => k8s.io/cli-runtime v0.21.1
 
@@ -124,3 +134,11 @@ replace k8s.io/kubernetes => github.com/kmodules/kubernetes v1.22.0-alpha.0.0.20
 replace k8s.io/utils => k8s.io/utils v0.0.0-20201110183641-67b214c5f920
 
 replace sigs.k8s.io/application => github.com/kmodules/application v0.8.4-0.20210427030912-90eeee3bc4ad
+
+replace github.com/satori/go.uuid => github.com/gofrs/uuid v4.0.0+incompatible
+
+replace github.com/dgrijalva/jwt-go => github.com/gomodules/jwt v3.2.2+incompatible
+
+replace github.com/golang-jwt/jwt => github.com/golang-jwt/jwt v3.2.2+incompatible
+
+replace github.com/form3tech-oss/jwt-go => github.com/form3tech-oss/jwt-go v3.2.5+incompatible

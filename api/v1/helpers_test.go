@@ -184,7 +184,6 @@ var testCases = func() []test {
 			expectedRegion:        "",
 		},
 	}
-
 }
 
 func TestBackend_Container(t *testing.T) {

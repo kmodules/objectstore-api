@@ -9,6 +9,7 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/google/go-cmp v0.5.6 // indirect
 	github.com/googleapis/gnostic v0.5.5 // indirect
+	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/mailru/easyjson v0.7.0 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.2.1

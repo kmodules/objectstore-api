@@ -10,7 +10,7 @@ require (
 	gomodules.xyz/encoding v0.0.5
 	gomodules.xyz/pointer v0.1.0
 	gomodules.xyz/stow v0.2.4
-	gomodules.xyz/x v0.0.14
+	gomodules.xyz/x v0.0.8
 	k8s.io/api v0.24.1
 	k8s.io/apimachinery v0.24.1
 	k8s.io/client-go v0.24.1

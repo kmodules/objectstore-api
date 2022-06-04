@@ -250,8 +250,8 @@ gomodules.xyz/stow/google
 gomodules.xyz/stow/local
 gomodules.xyz/stow/s3
 gomodules.xyz/stow/swift
-# gomodules.xyz/x v0.0.14
-## explicit; go 1.17
+# gomodules.xyz/x v0.0.8
+## explicit; go 1.12
 gomodules.xyz/x/strings
 # google.golang.org/api v0.43.0
 ## explicit; go 1.11

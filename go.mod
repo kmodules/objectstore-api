@@ -20,8 +20,6 @@ require (
 	sigs.k8s.io/yaml v1.3.0
 )
 
-require github.com/google/go-cmp v0.5.9 // indirect
-
 require (
 	cloud.google.com/go v0.97.0 // indirect
 	github.com/Azure/azure-sdk-for-go v32.5.0+incompatible // indirect

@@ -18,6 +18,7 @@ package v1
 
 import (
 	"net/url"
+	"path/filepath"
 
 	"github.com/pkg/errors"
 	core "k8s.io/api/core/v1"
@@ -83,7 +84,7 @@ func (l LocalSpec) ToVolumeAndMount(volName string) (core.Volume, core.VolumeMou
 	}
 	mnt := core.VolumeMount{
 		Name:      volName,
-		MountPath: l.MountPath,
+		MountPath: filepath.Join(volName, l.MountPath),
 		SubPath:   l.SubPath,
 	}
 	return vol, mnt

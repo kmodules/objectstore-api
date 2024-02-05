@@ -2,8 +2,6 @@ module kmodules.xyz/objectstore-api
 
 go 1.21
 
-toolchain go1.21.5
-
 require (
 	github.com/aws/aws-sdk-go v1.44.100
 	github.com/gogo/protobuf v1.3.2

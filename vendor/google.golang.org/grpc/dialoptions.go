@@ -20,55 +20,44 @@ package grpc
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"time"
 
-	"google.golang.org/grpc/backoff"
-	"google.golang.org/grpc/channelz"
+	"google.golang.org/grpc/balancer"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/internal"
-	internalbackoff "google.golang.org/grpc/internal/backoff"
-	"google.golang.org/grpc/internal/binarylog"
+	"google.golang.org/grpc/internal/backoff"
+	"google.golang.org/grpc/internal/envconfig"
 	"google.golang.org/grpc/internal/transport"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/stats"
 )
 
-func init() {
-	internal.AddGlobalDialOptions = func(opt ...DialOption) {
-		globalDialOptions = append(globalDialOptions, opt...)
-	}
-	internal.ClearGlobalDialOptions = func() {
-		globalDialOptions = nil
-	}
-	internal.WithBinaryLogger = withBinaryLogger
-	internal.JoinDialOptions = newJoinDialOption
-	internal.DisableGlobalDialOptions = newDisableGlobalDialOptions
-}
-
 // dialOptions configure a Dial call. dialOptions are set by the DialOption
 // values passed to Dial.
 type dialOptions struct {
-	unaryInt  UnaryClientInterceptor
-	streamInt StreamClientInterceptor
-
-	chainUnaryInts  []UnaryClientInterceptor
-	chainStreamInts []StreamClientInterceptor
-
-	cp                          Compressor
-	dc                          Decompressor
-	bs                          internalbackoff.Strategy
-	block                       bool
-	returnLastError             bool
-	timeout                     time.Duration
-	scChan                      <-chan ServiceConfig
-	authority                   string
-	binaryLogger                binarylog.Logger
-	copts                       transport.ConnectOptions
-	callOptions                 []CallOption
-	channelzParentID            *channelz.Identifier
+	unaryInt    UnaryClientInterceptor
+	streamInt   StreamClientInterceptor
+	cp          Compressor
+	dc          Decompressor
+	bs          backoff.Strategy
+	block       bool
+	insecure    bool
+	timeout     time.Duration
+	scChan      <-chan ServiceConfig
+	authority   string
+	copts       transport.ConnectOptions
+	callOptions []CallOption
+	// This is used by v1 balancer dial option WithBalancer to support v1
+	// balancer, and also by WithBalancerName dial option.
+	balancerBuilder balancer.Builder
+	// This is to support grpclb.
+	resolverBuilder             resolver.Builder
+	reqHandshake                envconfig.RequireHandshakeSetting
+	channelzParentID            int64
 	disableServiceConfig        bool
 	disableRetry                bool
 	disableHealthCheck          bool
@@ -76,9 +65,6 @@ type dialOptions struct {
 	minConnectTimeout           func() time.Duration
 	defaultServiceConfig        *ServiceConfig // defaultServiceConfig is parsed from defaultServiceConfigRawJSON.
 	defaultServiceConfigRawJSON *string
-	resolvers                   []resolver.Builder
-	idleTimeout                 time.Duration
-	recvBufferPool              SharedBufferPool
 }
 
 // DialOption configures how we set up the connection.
@@ -86,28 +72,13 @@ type DialOption interface {
 	apply(*dialOptions)
 }
 
-var globalDialOptions []DialOption
-
 // EmptyDialOption does not alter the dial configuration. It can be embedded in
 // another structure to build custom dial options.
 //
-// # Experimental
-//
-// Notice: This type is EXPERIMENTAL and may be changed or removed in a
-// later release.
+// This API is EXPERIMENTAL.
 type EmptyDialOption struct{}
 
 func (EmptyDialOption) apply(*dialOptions) {}
-
-type disableGlobalDialOptions struct{}
-
-func (disableGlobalDialOptions) apply(*dialOptions) {}
-
-// newDisableGlobalDialOptions returns a DialOption that prevents the ClientConn
-// from applying the global DialOptions (set via AddGlobalDialOptions).
-func newDisableGlobalDialOptions() DialOption {
-	return &disableGlobalDialOptions{}
-}
 
 // funcDialOption wraps a function that modifies dialOptions into an
 // implementation of the DialOption interface.
@@ -125,31 +96,14 @@ func newFuncDialOption(f func(*dialOptions)) *funcDialOption {
 	}
 }
 
-type joinDialOption struct {
-	opts []DialOption
-}
-
-func (jdo *joinDialOption) apply(do *dialOptions) {
-	for _, opt := range jdo.opts {
-		opt.apply(do)
-	}
-}
-
-func newJoinDialOption(opts ...DialOption) DialOption {
-	return &joinDialOption{opts: opts}
-}
-
-// WithSharedWriteBuffer allows reusing per-connection transport write buffer.
-// If this option is set to true every connection will release the buffer after
-// flushing the data on the wire.
+// WithWaitForHandshake blocks until the initial settings frame is received from
+// the server before assigning RPCs to the connection.
 //
-// # Experimental
-//
-// Notice: This API is EXPERIMENTAL and may be changed or removed in a
-// later release.
-func WithSharedWriteBuffer(val bool) DialOption {
+// Deprecated: this is the default behavior, and this option will be removed
+// after the 1.18 release.
+func WithWaitForHandshake() DialOption {
 	return newFuncDialOption(func(o *dialOptions) {
-		o.copts.SharedWriteBuffer = val
+		o.reqHandshake = envconfig.RequireHandshakeOn
 	})
 }
 
@@ -158,9 +112,8 @@ func WithSharedWriteBuffer(val bool) DialOption {
 // be twice the size to keep syscalls low. The default value for this buffer is
 // 32KB.
 //
-// Zero or negative values will disable the write buffer such that each write
-// will be on underlying connection. Note: A Send call may not directly
-// translate to a write.
+// Zero will disable the write buffer such that each write will be on underlying
+// connection. Note: A Send call may not directly translate to a write.
 func WithWriteBufferSize(s int) DialOption {
 	return newFuncDialOption(func(o *dialOptions) {
 		o.copts.WriteBufferSize = s
@@ -170,9 +123,8 @@ func WithWriteBufferSize(s int) DialOption {
 // WithReadBufferSize lets you set the size of read buffer, this determines how
 // much data can be read at most for each read syscall.
 //
-// The default value for this buffer is 32KB. Zero or negative values will
-// disable read buffer for a connection so data framer can access the
-// underlying conn directly.
+// The default value for this buffer is 32KB. Zero will disable read buffer for
+// a connection so data framer can access the underlying conn directly.
 func WithReadBufferSize(s int) DialOption {
 	return newFuncDialOption(func(o *dialOptions) {
 		o.copts.ReadBufferSize = s
@@ -200,8 +152,7 @@ func WithInitialConnWindowSize(s int32) DialOption {
 // WithMaxMsgSize returns a DialOption which sets the maximum message size the
 // client can receive.
 //
-// Deprecated: use WithDefaultCallOptions(MaxCallRecvMsgSize(s)) instead.  Will
-// be supported throughout 1.x.
+// Deprecated: use WithDefaultCallOptions(MaxCallRecvMsgSize(s)) instead.
 func WithMaxMsgSize(s int) DialOption {
 	return WithDefaultCallOptions(MaxCallRecvMsgSize(s))
 }
@@ -217,8 +168,7 @@ func WithDefaultCallOptions(cos ...CallOption) DialOption {
 // WithCodec returns a DialOption which sets a codec for message marshaling and
 // unmarshaling.
 //
-// Deprecated: use WithDefaultCallOptions(ForceCodec(_)) instead.  Will be
-// supported throughout 1.x.
+// Deprecated: use WithDefaultCallOptions(ForceCodec(_)) instead.
 func WithCodec(c Codec) DialOption {
 	return WithDefaultCallOptions(CallCustomCodec(c))
 }
@@ -227,7 +177,7 @@ func WithCodec(c Codec) DialOption {
 // message compression. It has lower priority than the compressor set by the
 // UseCompressor CallOption.
 //
-// Deprecated: use UseCompressor instead.  Will be supported throughout 1.x.
+// Deprecated: use UseCompressor instead.
 func WithCompressor(cp Compressor) DialOption {
 	return newFuncDialOption(func(o *dialOptions) {
 		o.cp = cp
@@ -242,48 +192,65 @@ func WithCompressor(cp Compressor) DialOption {
 // message.  If no compressor is registered for the encoding, an Unimplemented
 // status error will be returned.
 //
-// Deprecated: use encoding.RegisterCompressor instead.  Will be supported
-// throughout 1.x.
+// Deprecated: use encoding.RegisterCompressor instead.
 func WithDecompressor(dc Decompressor) DialOption {
 	return newFuncDialOption(func(o *dialOptions) {
 		o.dc = dc
 	})
 }
 
+// WithBalancer returns a DialOption which sets a load balancer with the v1 API.
+// Name resolver will be ignored if this DialOption is specified.
+//
+// Deprecated: use the new balancer APIs in balancer package and
+// WithBalancerName.
+func WithBalancer(b Balancer) DialOption {
+	return newFuncDialOption(func(o *dialOptions) {
+		o.balancerBuilder = &balancerWrapperBuilder{
+			b: b,
+		}
+	})
+}
+
+// WithBalancerName sets the balancer that the ClientConn will be initialized
+// with. Balancer registered with balancerName will be used. This function
+// panics if no balancer was registered by balancerName.
+//
+// The balancer cannot be overridden by balancer option specified by service
+// config.
+//
+// This is an EXPERIMENTAL API.
+func WithBalancerName(balancerName string) DialOption {
+	builder := balancer.Get(balancerName)
+	if builder == nil {
+		panic(fmt.Sprintf("grpc.WithBalancerName: no balancer is registered for name %v", balancerName))
+	}
+	return newFuncDialOption(func(o *dialOptions) {
+		o.balancerBuilder = builder
+	})
+}
+
+// withResolverBuilder is only for grpclb.
+func withResolverBuilder(b resolver.Builder) DialOption {
+	return newFuncDialOption(func(o *dialOptions) {
+		o.resolverBuilder = b
+	})
+}
+
 // WithServiceConfig returns a DialOption which has a channel to read the
 // service configuration.
 //
-// Deprecated: service config should be received through name resolver or via
-// WithDefaultServiceConfig, as specified at
-// https://github.com/grpc/grpc/blob/master/doc/service_config.md.  Will be
-// removed in a future 1.x release.
+// Deprecated: service config should be received through name resolver, as
+// specified here.
+// https://github.com/grpc/grpc/blob/master/doc/service_config.md
 func WithServiceConfig(c <-chan ServiceConfig) DialOption {
 	return newFuncDialOption(func(o *dialOptions) {
 		o.scChan = c
 	})
 }
 
-// WithConnectParams configures the ClientConn to use the provided ConnectParams
-// for creating and maintaining connections to servers.
-//
-// The backoff configuration specified as part of the ConnectParams overrides
-// all defaults specified in
-// https://github.com/grpc/grpc/blob/master/doc/connection-backoff.md. Consider
-// using the backoff.DefaultConfig as a base, in cases where you want to
-// override only a subset of the backoff configuration.
-func WithConnectParams(p ConnectParams) DialOption {
-	return newFuncDialOption(func(o *dialOptions) {
-		o.bs = internalbackoff.Exponential{Config: p.Backoff}
-		o.minConnectTimeout = func() time.Duration {
-			return p.MinConnectTimeout
-		}
-	})
-}
-
 // WithBackoffMaxDelay configures the dialer to use the provided maximum delay
 // when backing off after failed connection attempts.
-//
-// Deprecated: use WithConnectParams instead. Will be supported throughout 1.x.
 func WithBackoffMaxDelay(md time.Duration) DialOption {
 	return WithBackoffConfig(BackoffConfig{MaxDelay: md})
 }
@@ -291,79 +258,39 @@ func WithBackoffMaxDelay(md time.Duration) DialOption {
 // WithBackoffConfig configures the dialer to use the provided backoff
 // parameters after connection failures.
 //
-// Deprecated: use WithConnectParams instead. Will be supported throughout 1.x.
+// Use WithBackoffMaxDelay until more parameters on BackoffConfig are opened up
+// for use.
 func WithBackoffConfig(b BackoffConfig) DialOption {
-	bc := backoff.DefaultConfig
-	bc.MaxDelay = b.MaxDelay
-	return withBackoff(internalbackoff.Exponential{Config: bc})
+	return withBackoff(backoff.Exponential{
+		MaxDelay: b.MaxDelay,
+	})
 }
 
 // withBackoff sets the backoff strategy used for connectRetryNum after a failed
 // connection attempt.
 //
 // This can be exported if arbitrary backoff strategies are allowed by gRPC.
-func withBackoff(bs internalbackoff.Strategy) DialOption {
+func withBackoff(bs backoff.Strategy) DialOption {
 	return newFuncDialOption(func(o *dialOptions) {
 		o.bs = bs
 	})
 }
 
-// WithBlock returns a DialOption which makes callers of Dial block until the
+// WithBlock returns a DialOption which makes caller of Dial blocks until the
 // underlying connection is up. Without this, Dial returns immediately and
 // connecting the server happens in background.
-//
-// Use of this feature is not recommended.  For more information, please see:
-// https://github.com/grpc/grpc-go/blob/master/Documentation/anti-patterns.md
 func WithBlock() DialOption {
 	return newFuncDialOption(func(o *dialOptions) {
 		o.block = true
 	})
 }
 
-// WithReturnConnectionError returns a DialOption which makes the client connection
-// return a string containing both the last connection error that occurred and
-// the context.DeadlineExceeded error.
-// Implies WithBlock()
-//
-// Use of this feature is not recommended.  For more information, please see:
-// https://github.com/grpc/grpc-go/blob/master/Documentation/anti-patterns.md
-//
-// # Experimental
-//
-// Notice: This API is EXPERIMENTAL and may be changed or removed in a
-// later release.
-func WithReturnConnectionError() DialOption {
-	return newFuncDialOption(func(o *dialOptions) {
-		o.block = true
-		o.returnLastError = true
-	})
-}
-
 // WithInsecure returns a DialOption which disables transport security for this
-// ClientConn. Under the hood, it uses insecure.NewCredentials().
-//
-// Note that using this DialOption with per-RPC credentials (through
-// WithCredentialsBundle or WithPerRPCCredentials) which require transport
-// security is incompatible and will cause grpc.Dial() to fail.
-//
-// Deprecated: use WithTransportCredentials and insecure.NewCredentials()
-// instead. Will be supported throughout 1.x.
+// ClientConn. Note that transport security is required unless WithInsecure is
+// set.
 func WithInsecure() DialOption {
 	return newFuncDialOption(func(o *dialOptions) {
-		o.copts.TransportCredentials = insecure.NewCredentials()
-	})
-}
-
-// WithNoProxy returns a DialOption which disables the use of proxies for this
-// ClientConn. This is ignored if WithDialer or WithContextDialer are used.
-//
-// # Experimental
-//
-// Notice: This API is EXPERIMENTAL and may be changed or removed in a
-// later release.
-func WithNoProxy() DialOption {
-	return newFuncDialOption(func(o *dialOptions) {
-		o.copts.UseProxy = false
+		o.insecure = true
 	})
 }
 
@@ -388,10 +315,7 @@ func WithPerRPCCredentials(creds credentials.PerRPCCredentials) DialOption {
 // the ClientConn.WithCreds. This should not be used together with
 // WithTransportCredentials.
 //
-// # Experimental
-//
-// Notice: This API is EXPERIMENTAL and may be changed or removed in a
-// later release.
+// This API is experimental.
 func WithCredentialsBundle(b credentials.Bundle) DialOption {
 	return newFuncDialOption(func(o *dialOptions) {
 		o.copts.CredsBundle = b
@@ -401,8 +325,7 @@ func WithCredentialsBundle(b credentials.Bundle) DialOption {
 // WithTimeout returns a DialOption that configures a timeout for dialing a
 // ClientConn initially. This is valid if and only if WithBlock() is present.
 //
-// Deprecated: use DialContext instead of Dial and context.WithTimeout
-// instead.  Will be supported throughout 1.x.
+// Deprecated: use DialContext and context.WithTimeout instead.
 func WithTimeout(d time.Duration) DialOption {
 	return newFuncDialOption(func(o *dialOptions) {
 		o.timeout = d
@@ -420,6 +343,7 @@ func WithContextDialer(f func(context.Context, string) (net.Conn, error)) DialOp
 }
 
 func init() {
+	internal.WithResolverBuilder = withResolverBuilder
 	internal.WithHealthCheckFunc = withHealthCheckFunc
 }
 
@@ -428,8 +352,7 @@ func init() {
 // is returned by f, gRPC checks the error's Temporary() method to decide if it
 // should try to reconnect to the network address.
 //
-// Deprecated: use WithContextDialer instead.  Will be supported throughout
-// 1.x.
+// Deprecated: use WithContextDialer instead
 func WithDialer(f func(string, time.Duration) (net.Conn, error)) DialOption {
 	return WithContextDialer(
 		func(ctx context.Context, addr string) (net.Conn, error) {
@@ -444,21 +367,7 @@ func WithDialer(f func(string, time.Duration) (net.Conn, error)) DialOption {
 // all the RPCs and underlying network connections in this ClientConn.
 func WithStatsHandler(h stats.Handler) DialOption {
 	return newFuncDialOption(func(o *dialOptions) {
-		if h == nil {
-			logger.Error("ignoring nil parameter in grpc.WithStatsHandler ClientOption")
-			// Do not allow a nil stats handler, which would otherwise cause
-			// panics.
-			return
-		}
-		o.copts.StatsHandlers = append(o.copts.StatsHandlers, h)
-	})
-}
-
-// withBinaryLogger returns a DialOption that specifies the binary logger for
-// this ClientConn.
-func withBinaryLogger(bl binarylog.Logger) DialOption {
-	return newFuncDialOption(func(o *dialOptions) {
-		o.binaryLogger = bl
+		o.copts.StatsHandler = h
 	})
 }
 
@@ -470,13 +379,7 @@ func withBinaryLogger(bl binarylog.Logger) DialOption {
 // FailOnNonTempDialError only affects the initial dial, and does not do
 // anything useful unless you are also using WithBlock().
 //
-// Use of this feature is not recommended.  For more information, please see:
-// https://github.com/grpc/grpc-go/blob/master/Documentation/anti-patterns.md
-//
-// # Experimental
-//
-// Notice: This API is EXPERIMENTAL and may be changed or removed in a
-// later release.
+// This is an EXPERIMENTAL API.
 func FailOnNonTempDialError(f bool) DialOption {
 	return newFuncDialOption(func(o *dialOptions) {
 		o.copts.FailOnNonTempDialError = f
@@ -495,7 +398,7 @@ func WithUserAgent(s string) DialOption {
 // for the client transport.
 func WithKeepaliveParams(kp keepalive.ClientParameters) DialOption {
 	if kp.Time < internal.KeepaliveMinPingTime {
-		logger.Warningf("Adjusting keepalive ping interval to minimum period of %v", internal.KeepaliveMinPingTime)
+		grpclog.Warningf("Adjusting keepalive ping interval to minimum period of %v", internal.KeepaliveMinPingTime)
 		kp.Time = internal.KeepaliveMinPingTime
 	}
 	return newFuncDialOption(func(o *dialOptions) {
@@ -511,17 +414,6 @@ func WithUnaryInterceptor(f UnaryClientInterceptor) DialOption {
 	})
 }
 
-// WithChainUnaryInterceptor returns a DialOption that specifies the chained
-// interceptor for unary RPCs. The first interceptor will be the outer most,
-// while the last interceptor will be the inner most wrapper around the real call.
-// All interceptors added by this method will be chained, and the interceptor
-// defined by WithUnaryInterceptor will always be prepended to the chain.
-func WithChainUnaryInterceptor(interceptors ...UnaryClientInterceptor) DialOption {
-	return newFuncDialOption(func(o *dialOptions) {
-		o.chainUnaryInts = append(o.chainUnaryInts, interceptors...)
-	})
-}
-
 // WithStreamInterceptor returns a DialOption that specifies the interceptor for
 // streaming RPCs.
 func WithStreamInterceptor(f StreamClientInterceptor) DialOption {
@@ -530,19 +422,9 @@ func WithStreamInterceptor(f StreamClientInterceptor) DialOption {
 	})
 }
 
-// WithChainStreamInterceptor returns a DialOption that specifies the chained
-// interceptor for streaming RPCs. The first interceptor will be the outer most,
-// while the last interceptor will be the inner most wrapper around the real call.
-// All interceptors added by this method will be chained, and the interceptor
-// defined by WithStreamInterceptor will always be prepended to the chain.
-func WithChainStreamInterceptor(interceptors ...StreamClientInterceptor) DialOption {
-	return newFuncDialOption(func(o *dialOptions) {
-		o.chainStreamInts = append(o.chainStreamInts, interceptors...)
-	})
-}
-
 // WithAuthority returns a DialOption that specifies the value to be used as the
-// :authority pseudo-header and as the server name in authentication handshake.
+// :authority pseudo-header. This value only works with WithInsecure and has no
+// effect if TransportCredentials are present.
 func WithAuthority(a string) DialOption {
 	return newFuncDialOption(func(o *dialOptions) {
 		o.authority = a
@@ -552,23 +434,18 @@ func WithAuthority(a string) DialOption {
 // WithChannelzParentID returns a DialOption that specifies the channelz ID of
 // current ClientConn's parent. This function is used in nested channel creation
 // (e.g. grpclb dial).
-//
-// # Experimental
-//
-// Notice: This API is EXPERIMENTAL and may be changed or removed in a
-// later release.
-func WithChannelzParentID(id *channelz.Identifier) DialOption {
+func WithChannelzParentID(id int64) DialOption {
 	return newFuncDialOption(func(o *dialOptions) {
 		o.channelzParentID = id
 	})
 }
 
-// WithDisableServiceConfig returns a DialOption that causes gRPC to ignore any
+// WithDisableServiceConfig returns a DialOption that causes grpc to ignore any
 // service config provided by the resolver and provides a hint to the resolver
 // to not fetch service configs.
 //
-// Note that this dial option only disables service config from resolver. If
-// default service config is provided, gRPC will use the default service config.
+// Note that, this dial option only disables service config from resolver. If
+// default service config is provided, grpc will use the default service config.
 func WithDisableServiceConfig() DialOption {
 	return newFuncDialOption(func(o *dialOptions) {
 		o.disableServiceConfig = true
@@ -577,17 +454,10 @@ func WithDisableServiceConfig() DialOption {
 
 // WithDefaultServiceConfig returns a DialOption that configures the default
 // service config, which will be used in cases where:
+// 1. WithDisableServiceConfig is called.
+// 2. Resolver does not return service config or if the resolver gets and invalid config.
 //
-// 1. WithDisableServiceConfig is also used, or
-//
-// 2. The name resolver does not provide a service config or provides an
-// invalid service config.
-//
-// The parameter s is the JSON representation of the default service config.
-// For more information about service configs, see:
-// https://github.com/grpc/grpc/blob/master/doc/service_config.md
-// For a simple example of usage, see:
-// examples/features/load_balancing/client/main.go
+// This API is EXPERIMENTAL.
 func WithDefaultServiceConfig(s string) DialOption {
 	return newFuncDialOption(func(o *dialOptions) {
 		o.defaultServiceConfigRawJSON = &s
@@ -598,6 +468,12 @@ func WithDefaultServiceConfig(s string) DialOption {
 // service config enables them.  This does not impact transparent retries, which
 // will happen automatically if no data is written to the wire or if the RPC is
 // unprocessed by the remote server.
+//
+// Retry support is currently disabled by default, but will be enabled by
+// default in the future.  Until then, it may be enabled by setting the
+// environment variable "GRPC_GO_RETRY" to "on".
+//
+// This API is EXPERIMENTAL.
 func WithDisableRetry() DialOption {
 	return newFuncDialOption(func(o *dialOptions) {
 		o.disableRetry = true
@@ -615,10 +491,7 @@ func WithMaxHeaderListSize(s uint32) DialOption {
 // WithDisableHealthCheck disables the LB channel health checking for all
 // SubConns of this ClientConn.
 //
-// # Experimental
-//
-// Notice: This API is EXPERIMENTAL and may be changed or removed in a
-// later release.
+// This API is EXPERIMENTAL.
 func WithDisableHealthCheck() DialOption {
 	return newFuncDialOption(func(o *dialOptions) {
 		o.disableHealthCheck = true
@@ -637,14 +510,13 @@ func withHealthCheckFunc(f internal.HealthChecker) DialOption {
 
 func defaultDialOptions() dialOptions {
 	return dialOptions{
+		disableRetry:    !envconfig.Retry,
+		reqHandshake:    envconfig.RequireHandshake,
 		healthCheckFunc: internal.HealthCheckFunc,
 		copts: transport.ConnectOptions{
 			WriteBufferSize: defaultWriteBufSize,
 			ReadBufferSize:  defaultReadBufSize,
-			UseProxy:        true,
 		},
-		recvBufferPool: nopBufferPool{},
-		idleTimeout:    30 * time.Minute,
 	}
 }
 
@@ -656,61 +528,5 @@ func defaultDialOptions() dialOptions {
 func withMinConnectDeadline(f func() time.Duration) DialOption {
 	return newFuncDialOption(func(o *dialOptions) {
 		o.minConnectTimeout = f
-	})
-}
-
-// WithResolvers allows a list of resolver implementations to be registered
-// locally with the ClientConn without needing to be globally registered via
-// resolver.Register.  They will be matched against the scheme used for the
-// current Dial only, and will take precedence over the global registry.
-//
-// # Experimental
-//
-// Notice: This API is EXPERIMENTAL and may be changed or removed in a
-// later release.
-func WithResolvers(rs ...resolver.Builder) DialOption {
-	return newFuncDialOption(func(o *dialOptions) {
-		o.resolvers = append(o.resolvers, rs...)
-	})
-}
-
-// WithIdleTimeout returns a DialOption that configures an idle timeout for the
-// channel. If the channel is idle for the configured timeout, i.e there are no
-// ongoing RPCs and no new RPCs are initiated, the channel will enter idle mode
-// and as a result the name resolver and load balancer will be shut down. The
-// channel will exit idle mode when the Connect() method is called or when an
-// RPC is initiated.
-//
-// A default timeout of 30 minutes will be used if this dial option is not set
-// at dial time and idleness can be disabled by passing a timeout of zero.
-//
-// # Experimental
-//
-// Notice: This API is EXPERIMENTAL and may be changed or removed in a
-// later release.
-func WithIdleTimeout(d time.Duration) DialOption {
-	return newFuncDialOption(func(o *dialOptions) {
-		o.idleTimeout = d
-	})
-}
-
-// WithRecvBufferPool returns a DialOption that configures the ClientConn
-// to use the provided shared buffer pool for parsing incoming messages. Depending
-// on the application's workload, this could result in reduced memory allocation.
-//
-// If you are unsure about how to implement a memory pool but want to utilize one,
-// begin with grpc.NewSharedBufferPool.
-//
-// Note: The shared buffer pool feature will not be active if any of the following
-// options are used: WithStatsHandler, EnableTracing, or binary logging. In such
-// cases, the shared buffer pool will be ignored.
-//
-// # Experimental
-//
-// Notice: This API is EXPERIMENTAL and may be changed or removed in a
-// later release.
-func WithRecvBufferPool(bufferPool SharedBufferPool) DialOption {
-	return newFuncDialOption(func(o *dialOptions) {
-		o.recvBufferPool = bufferPool
 	})
 }

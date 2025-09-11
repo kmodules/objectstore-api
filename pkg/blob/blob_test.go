@@ -1,11 +1,11 @@
 /*
 Copyright AppsCode Inc. and Contributors
 
-Licensed under the AppsCode Free Trial License 1.0.0 (the "License");
+Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    https://github.com/appscode/licenses/raw/1.0.0/AppsCode-Free-Trial-1.0.0.md
+    http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package blob
+package blob_test
 
 import (
 	"context"
@@ -22,13 +22,14 @@ import (
 	"path/filepath"
 	"testing"
 
-	v1 "kmodules.xyz/objectstore-api/api/v1"
-	storageapi "kubestash.dev/apimachinery/apis/storage/v1alpha1"
+	api "kmodules.xyz/objectstore-api/api/v1"
+	"kmodules.xyz/objectstore-api/pkg/blob"
 
 	"github.com/stretchr/testify/assert"
 	"gocloud.dev/gcerrors"
 	"k8s.io/apimachinery/pkg/runtime"
-	kubeClient "sigs.k8s.io/controller-runtime/pkg/client"
+	storageapi "kubestash.dev/apimachinery/apis/storage/v1alpha1"
+	rtc "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -124,25 +125,25 @@ func isNotFound(err error) bool {
 	return gcerrors.Code(err) == gcerrors.NotFound
 }
 
-func cleanupTestData(storage *Blob, t *testing.T) {
+func cleanupTestData(storage *blob.Blob, t *testing.T) {
 	if err := storage.Delete(context.Background(), testPath, true); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func getSampleStorage() (*Blob, error) {
+func getSampleStorage() (*blob.Blob, error) {
 	bc := sampleBackendConfig()
 	fakeClient, err := getFakeClient()
 	if err != nil {
 		return nil, err
 	}
-	return NewBlob(context.Background(), fakeClient, "db", bc)
+	return blob.NewBlob(context.Background(), fakeClient, "db", bc)
 }
 
-func sampleBackendConfig(transformFuncs ...func(bConfig *v1.Backend)) *v1.Backend {
-	bConfig := &v1.Backend{
+func sampleBackendConfig(transformFuncs ...func(bConfig *api.Backend)) *api.Backend {
+	bConfig := &api.Backend{
 		StorageSecretName: "sample-s3-repo-secret",
-		S3: &v1.S3Spec{
+		S3: &api.S3Spec{
 			Region:   region,
 			Bucket:   bucket,
 			Endpoint: endpoint,
@@ -155,7 +156,7 @@ func sampleBackendConfig(transformFuncs ...func(bConfig *v1.Backend)) *v1.Backen
 	return bConfig
 }
 
-func getFakeClient(initObjs ...kubeClient.Object) (kubeClient.WithWatch, error) {
+func getFakeClient(initObjs ...rtc.Object) (rtc.WithWatch, error) {
 	scheme := runtime.NewScheme()
 	if err := storageapi.AddToScheme(scheme); err != nil {
 		return nil, err

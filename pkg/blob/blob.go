@@ -1,11 +1,11 @@
 /*
 Copyright AppsCode Inc. and Contributors
 
-Licensed under the AppsCode Free Trial License 1.0.0 (the "License");
+Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    https://github.com/appscode/licenses/raw/1.0.0/AppsCode-Free-Trial-1.0.0.md
+    http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,21 +27,20 @@ import (
 	"path"
 	"strings"
 
+	api "kmodules.xyz/objectstore-api/api/v1"
+
 	aws2 "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"k8s.io/apimachinery/pkg/types"
-	v2 "kmodules.xyz/objectstore-api/api/v1"
-
 	"gocloud.dev/blob"
 	_ "gocloud.dev/blob/azureblob"
 	_ "gocloud.dev/blob/fileblob"
 	_ "gocloud.dev/blob/gcsblob"
 	"gocloud.dev/blob/s3blob"
-	_ "gocloud.dev/blob/s3blob"
-	v1 "k8s.io/api/core/v1"
+	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -67,16 +66,16 @@ const (
 type Blob struct {
 	prefix     string
 	storageURL string
-	secret     *v1.Secret
-	bConfig    *v2.Backend
+	secret     *core.Secret
+	bConfig    *api.Backend
 }
 
-func NewBlob(ctx context.Context, c client.Client, namespace string, bConfig *v2.Backend) (*Blob, error) {
+func NewBlob(ctx context.Context, c client.Client, namespace string, bConfig *api.Backend) (*Blob, error) {
 	provider, err := bConfig.Provider()
 	if err != nil {
 		return nil, err
 	}
-	var secret *v1.Secret
+	var secret *core.Secret
 	if bConfig.StorageSecretName != "" {
 		secret, err = getStorageSecret(ctx, c, types.NamespacedName{
 			Namespace: namespace,
@@ -88,20 +87,20 @@ func NewBlob(ctx context.Context, c client.Client, namespace string, bConfig *v2
 	}
 
 	switch provider {
-	case v2.ProviderS3:
+	case api.ProviderS3:
 		return s3Blob(secret, bConfig), nil
-	case v2.ProviderGCS:
+	case api.ProviderGCS:
 		return gcsBlob(secret, bConfig)
-	case v2.ProviderAzure:
+	case api.ProviderAzure:
 		return azureBlob(secret, bConfig)
-	case v2.ProviderLocal:
+	case api.ProviderLocal:
 		return localBlob(bConfig)
 	default:
 		return nil, fmt.Errorf("unknown provider: %s", provider)
 	}
 }
 
-func s3Blob(secret *v1.Secret, bConfig *v2.Backend) *Blob {
+func s3Blob(secret *core.Secret, bConfig *api.Backend) *Blob {
 	return &Blob{
 		secret:  secret,
 		bConfig: bConfig,
@@ -109,7 +108,7 @@ func s3Blob(secret *v1.Secret, bConfig *v2.Backend) *Blob {
 	}
 }
 
-func gcsBlob(secret *v1.Secret, bConfig *v2.Backend) (*Blob, error) {
+func gcsBlob(secret *core.Secret, bConfig *api.Backend) (*Blob, error) {
 	if secret != nil {
 		if err := setGcsCredentialsToEnv(secret); err != nil {
 			return nil, err
@@ -122,7 +121,7 @@ func gcsBlob(secret *v1.Secret, bConfig *v2.Backend) (*Blob, error) {
 	}, nil
 }
 
-func azureBlob(secret *v1.Secret, bConfig *v2.Backend) (*Blob, error) {
+func azureBlob(secret *core.Secret, bConfig *api.Backend) (*Blob, error) {
 	if secret != nil {
 		if err := setAzureCredentialsToEnv(secret); err != nil {
 			return nil, err
@@ -134,14 +133,14 @@ func azureBlob(secret *v1.Secret, bConfig *v2.Backend) (*Blob, error) {
 	}, nil
 }
 
-func localBlob(bConfig *v2.Backend) (*Blob, error) {
+func localBlob(bConfig *api.Backend) (*Blob, error) {
 	return &Blob{
 		storageURL: fmt.Sprintf("%s%s?no_tmp_dir=true", localPrefix, bConfig.Local.MountPath),
 	}, nil
 }
 
-func getStorageSecret(ctx context.Context, c client.Client, nsName types.NamespacedName) (*v1.Secret, error) {
-	secret := &v1.Secret{
+func getStorageSecret(ctx context.Context, c client.Client, nsName types.NamespacedName) (*core.Secret, error) {
+	secret := &core.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: nsName.Namespace,
 			Name:      nsName.Name,
@@ -153,7 +152,7 @@ func getStorageSecret(ctx context.Context, c client.Client, nsName types.Namespa
 	return secret, nil
 }
 
-func setGcsCredentialsToEnv(secret *v1.Secret) error {
+func setGcsCredentialsToEnv(secret *core.Secret) error {
 	if val, ok := secret.Data[googleServiceAccountJsonKey]; !ok {
 		return fmt.Errorf("storage secret missing %s key", googleServiceAccountJsonKey)
 	} else {
@@ -168,7 +167,7 @@ func setGcsCredentialsToEnv(secret *v1.Secret) error {
 	return nil
 }
 
-func setAzureCredentialsToEnv(secret *v1.Secret) error {
+func setAzureCredentialsToEnv(secret *core.Secret) error {
 	if val, ok := secret.Data[azureAccountKey]; !ok {
 		return fmt.Errorf("storage secret missing %s key", azureAccountKey)
 	} else {
@@ -427,7 +426,7 @@ func (b *Blob) openBucketWithDebug(ctx context.Context, dir string, debug bool) 
 		return nil, err
 	}
 
-	if provider == v2.ProviderS3 {
+	if provider == api.ProviderS3 {
 		cfg, err := b.getS3Config(ctx, debug)
 		if err != nil {
 			return nil, err

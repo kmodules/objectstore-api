@@ -290,15 +290,13 @@ type downloader struct {
 	in *s3.GetObjectInput
 	w  io.WriterAt
 
-	wg   sync.WaitGroup
-	m    sync.Mutex
-	once sync.Once
+	wg sync.WaitGroup
+	m  sync.Mutex
 
 	pos        int64
 	totalBytes int64
 	written    int64
 	err        error
-	etag       string
 
 	partBodyMaxRetries int
 }
@@ -426,9 +424,6 @@ func (d *downloader) downloadChunk(chunk dlchunk) error {
 
 	// Get the next byte range of data
 	in.Range = aws.String(chunk.ByteRange())
-	if in.VersionId == nil && d.etag != "" {
-		in.IfMatch = aws.String(d.etag)
-	}
 
 	var n int64
 	var err error
@@ -471,9 +466,6 @@ func (d *downloader) tryDownloadChunk(in *s3.GetObjectInput, w io.Writer) (int64
 		return 0, err
 	}
 	d.setTotalBytes(resp) // Set total if not yet set.
-	d.once.Do(func() {
-		d.etag = aws.StringValue(resp.ETag)
-	})
 
 	var src io.Reader = resp.Body
 	if d.cfg.BufferProvider != nil {

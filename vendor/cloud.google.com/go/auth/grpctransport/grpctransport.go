@@ -304,18 +304,17 @@ func dial(ctx context.Context, secure bool, opts *Options) (*grpc.ClientConn, er
 			// This condition is only met for non-DirectPath clients because
 			// TransportTypeMTLSS2A is used only when InternalOptions.EnableDirectPath
 			// is false.
-			optsClone := opts.resolveDetectOptions()
 			if transportCreds.TransportType == transport.TransportTypeMTLSS2A {
 				// Check that the client allows requesting hard-bound token for the transport type mTLS using S2A.
 				for _, ev := range opts.InternalOptions.AllowHardBoundTokens {
 					if ev == "MTLS_S2A" {
-						optsClone.TokenBindingType = credentials.MTLSHardBinding
+						opts.DetectOpts.TokenBindingType = credentials.MTLSHardBinding
 						break
 					}
 				}
 			}
 			var err error
-			creds, err = credentials.DetectDefault(optsClone)
+			creds, err = credentials.DetectDefault(opts.resolveDetectOptions())
 			if err != nil {
 				return nil, err
 			}
@@ -342,10 +341,7 @@ func dial(ctx context.Context, secure bool, opts *Options) (*grpc.ClientConn, er
 			}),
 		)
 		// Attempt Direct Path
-		grpcOpts, transportCreds.Endpoint, err = configureDirectPath(grpcOpts, opts, transportCreds.Endpoint, creds)
-		if err != nil {
-			return nil, err
-		}
+		grpcOpts, transportCreds.Endpoint = configureDirectPath(grpcOpts, opts, transportCreds.Endpoint, creds)
 	}
 
 	// Add tracing, but before the other options, so that clients can override the
@@ -354,7 +350,7 @@ func dial(ctx context.Context, secure bool, opts *Options) (*grpc.ClientConn, er
 	grpcOpts = addOpenTelemetryStatsHandler(grpcOpts, opts)
 	grpcOpts = append(grpcOpts, opts.GRPCDialOpts...)
 
-	return grpc.DialContext(ctx, transportCreds.Endpoint, grpcOpts...)
+	return grpc.Dial(transportCreds.Endpoint, grpcOpts...)
 }
 
 // grpcKeyProvider satisfies https://pkg.go.dev/google.golang.org/grpc/credentials#PerRPCCredentials.

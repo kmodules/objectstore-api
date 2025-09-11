@@ -257,12 +257,9 @@ type WriteGetObjectResponseInput struct {
 	ReplicationStatus types.ReplicationStatus
 
 	// If present, indicates that the requester was successfully charged for the
-	// request. For more information, see [Using Requester Pays buckets for storage transfers and usage]in the Amazon Simple Storage Service user
-	// guide.
+	// request.
 	//
 	// This functionality is not supported for directory buckets.
-	//
-	// [Using Requester Pays buckets for storage transfers and usage]: https://docs.aws.amazon.com/AmazonS3/latest/userguide/RequesterPaysBuckets.html
 	RequestCharged types.RequestCharged
 
 	// Provides information about object restoration operation and expiration time of
@@ -285,10 +282,7 @@ type WriteGetObjectResponseInput struct {
 	SSEKMSKeyId *string
 
 	//  The server-side encryption algorithm used when storing requested object in
-	// Amazon S3 or Amazon FSx.
-	//
-	// When accessing data stored in Amazon FSx file systems using S3 access points,
-	// the only valid server side encryption option is aws:fsx .
+	// Amazon S3 (for example, AES256, aws:kms ).
 	ServerSideEncryption types.ServerSideEncryption
 
 	// The integer status code for an HTTP response of a corresponding GetObject
@@ -462,36 +456,6 @@ func (c *Client) addOperationWriteGetObjectResponseMiddlewares(stack *middleware
 		return err
 	}
 	if err = addSerializeImmutableHostnameBucketMiddleware(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAttempt(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptExecution(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeSerialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterSerialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeSigning(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterSigning(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptTransmit(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeDeserialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterDeserialization(stack, options); err != nil {
 		return err
 	}
 	if err = addSpanInitializeStart(stack); err != nil {

@@ -72,7 +72,6 @@ az container create -g $rg -n $aciName --image $image `
   --acr-identity $($DeploymentOutputs['AZIDENTITY_USER_ASSIGNED_IDENTITY']) `
   --assign-identity [system] $($DeploymentOutputs['AZIDENTITY_USER_ASSIGNED_IDENTITY']) `
   --cpu 1 `
-  --ip-address Public `
   --memory 1.0 `
   --os-type Linux `
   --role "Storage Blob Data Reader" `
@@ -83,8 +82,7 @@ az container create -g $rg -n $aciName --image $image `
   AZIDENTITY_USER_ASSIGNED_IDENTITY_CLIENT_ID=$($DeploymentOutputs['AZIDENTITY_USER_ASSIGNED_IDENTITY_CLIENT_ID']) `
   AZIDENTITY_USER_ASSIGNED_IDENTITY_OBJECT_ID=$($DeploymentOutputs['AZIDENTITY_USER_ASSIGNED_IDENTITY_OBJECT_ID']) `
   FUNCTIONS_CUSTOMHANDLER_PORT=80
-$aciIP = az container show -g $rg -n $aciName --query ipAddress.ip --output tsv
-Write-Host "##vso[task.setvariable variable=AZIDENTITY_ACI_IP;]$aciIP"
+Write-Host "##vso[task.setvariable variable=AZIDENTITY_ACI_NAME;]$aciName"
 
 # Azure Functions deployment: copy the Windows binary from the Docker image, deploy it in a zip
 Write-Host "Deploying to Azure Functions"

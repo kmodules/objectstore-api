@@ -424,7 +424,11 @@ func (r *gRPCReadObjectReader) recv() error {
 	databufs := mem.BufferSlice{}
 	err := r.stream.RecvMsg(&databufs)
 
-	if err != nil && r.settings.retry.runShouldRetry(err) {
+	var shouldRetry = ShouldRetry
+	if r.settings.retry != nil && r.settings.retry.shouldRetry != nil {
+		shouldRetry = r.settings.retry.shouldRetry
+	}
+	if err != nil && shouldRetry(err) {
 		// This will "close" the existing stream and immediately attempt to
 		// reopen the stream, but will backoff if further attempts are necessary.
 		// Reopening the stream Recvs the first message, so if retrying is
@@ -771,7 +775,7 @@ func (d *readObjectResponseDecoder) readFullObjectResponse() error {
 
 			bytesFieldLen, err := d.consumeVarint()
 			if err != nil {
-				return fmt.Errorf("consuming bytes: %w", err)
+				return fmt.Errorf("consuming bytes: %v", err)
 			}
 
 			var contentEndOff = d.off + bytesFieldLen
@@ -807,7 +811,7 @@ func (d *readObjectResponseDecoder) readFullObjectResponse() error {
 			// Consume the bytes and copy them into a single buffer if they are split across buffers.
 			buf, err := d.consumeBytesCopy()
 			if err != nil {
-				return fmt.Errorf("invalid ReadObjectResponse.ObjectChecksums: %w", err)
+				return fmt.Errorf("invalid ReadObjectResponse.ObjectChecksums: %v", err)
 			}
 			// Unmarshal.
 			if err := proto.Unmarshal(buf, msg.ObjectChecksums); err != nil {
@@ -817,7 +821,7 @@ func (d *readObjectResponseDecoder) readFullObjectResponse() error {
 			msg.ContentRange = &storagepb.ContentRange{}
 			buf, err := d.consumeBytesCopy()
 			if err != nil {
-				return fmt.Errorf("invalid ReadObjectResponse.ContentRange: %w", err)
+				return fmt.Errorf("invalid ReadObjectResponse.ContentRange: %v", err)
 			}
 			if err := proto.Unmarshal(buf, msg.ContentRange); err != nil {
 				return err
@@ -827,7 +831,7 @@ func (d *readObjectResponseDecoder) readFullObjectResponse() error {
 
 			buf, err := d.consumeBytesCopy()
 			if err != nil {
-				return fmt.Errorf("invalid ReadObjectResponse.Metadata: %w", err)
+				return fmt.Errorf("invalid ReadObjectResponse.Metadata: %v", err)
 			}
 
 			if err := proto.Unmarshal(buf, msg.Metadata); err != nil {

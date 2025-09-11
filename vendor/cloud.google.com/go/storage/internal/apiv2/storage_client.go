@@ -510,18 +510,14 @@ func (c *Client) LockBucketRetentionPolicy(ctx context.Context, req *storagepb.L
 
 // GetIamPolicy gets the IAM policy for a specified bucket.
 // The resource field in the request should be
-// projects/_/buckets/{bucket} for a bucket, or
-// projects/_/buckets/{bucket}/managedFolders/{managedFolder}
-// for a managed folder.
+// projects/_/buckets/{bucket}.
 func (c *Client) GetIamPolicy(ctx context.Context, req *iampb.GetIamPolicyRequest, opts ...gax.CallOption) (*iampb.Policy, error) {
 	return c.internalClient.GetIamPolicy(ctx, req, opts...)
 }
 
 // SetIamPolicy updates an IAM policy for the specified bucket.
 // The resource field in the request should be
-// projects/_/buckets/{bucket} for a bucket, or
-// projects/_/buckets/{bucket}/managedFolders/{managedFolder}
-// for a managed folder.
+// projects/_/buckets/{bucket}.
 func (c *Client) SetIamPolicy(ctx context.Context, req *iampb.SetIamPolicyRequest, opts ...gax.CallOption) (*iampb.Policy, error) {
 	return c.internalClient.SetIamPolicy(ctx, req, opts...)
 }
@@ -880,7 +876,7 @@ func (c *gRPCClient) Connection() *grpc.ClientConn {
 // use by Google-written clients.
 func (c *gRPCClient) setGoogleClientInfo(keyval ...string) {
 	kv := append([]string{"gl-go", gax.GoVersion}, keyval...)
-	kv = append(kv, "gapic", getVersionClient(), "gax", gax.Version, "grpc", grpc.Version, "pb", protoVersion)
+	kv = append(kv, "gapic", getVersionClient(), "gax", gax.Version, "grpc", grpc.Version)
 	c.xGoogHeaders = []string{
 		"x-goog-api-client", gax.XGoogHeader(kv...),
 	}
@@ -1060,9 +1056,6 @@ func (c *gRPCClient) GetIamPolicy(ctx context.Context, req *iampb.GetIamPolicyRe
 	if reg := regexp.MustCompile("(?P<bucket>.*)"); reg.MatchString(req.GetResource()) && len(url.QueryEscape(reg.FindStringSubmatch(req.GetResource())[1])) > 0 {
 		routingHeadersMap["bucket"] = url.QueryEscape(reg.FindStringSubmatch(req.GetResource())[1])
 	}
-	if reg := regexp.MustCompile("(?P<bucket>projects/[^/]+/buckets/[^/]+)(?:/.*)?"); reg.MatchString(req.GetResource()) && len(url.QueryEscape(reg.FindStringSubmatch(req.GetResource())[1])) > 0 {
-		routingHeadersMap["bucket"] = url.QueryEscape(reg.FindStringSubmatch(req.GetResource())[1])
-	}
 	for headerName, headerValue := range routingHeadersMap {
 		routingHeaders = fmt.Sprintf("%s%s=%s&", routingHeaders, headerName, headerValue)
 	}
@@ -1088,9 +1081,6 @@ func (c *gRPCClient) SetIamPolicy(ctx context.Context, req *iampb.SetIamPolicyRe
 	routingHeaders := ""
 	routingHeadersMap := make(map[string]string)
 	if reg := regexp.MustCompile("(?P<bucket>.*)"); reg.MatchString(req.GetResource()) && len(url.QueryEscape(reg.FindStringSubmatch(req.GetResource())[1])) > 0 {
-		routingHeadersMap["bucket"] = url.QueryEscape(reg.FindStringSubmatch(req.GetResource())[1])
-	}
-	if reg := regexp.MustCompile("(?P<bucket>projects/[^/]+/buckets/[^/]+)(?:/.*)?"); reg.MatchString(req.GetResource()) && len(url.QueryEscape(reg.FindStringSubmatch(req.GetResource())[1])) > 0 {
 		routingHeadersMap["bucket"] = url.QueryEscape(reg.FindStringSubmatch(req.GetResource())[1])
 	}
 	for headerName, headerValue := range routingHeadersMap {

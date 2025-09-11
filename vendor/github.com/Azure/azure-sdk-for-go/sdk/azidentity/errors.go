@@ -103,6 +103,8 @@ func (e *AuthenticationFailedError) Error() string {
 		anchor = "client-secret"
 	case credNameManagedIdentity:
 		anchor = "managed-id"
+	case credNameUserPassword:
+		anchor = "username-password"
 	case credNameWorkloadIdentity:
 		anchor = "workload"
 	}

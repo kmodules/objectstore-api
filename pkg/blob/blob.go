@@ -30,6 +30,7 @@ import (
 	api "kmodules.xyz/objectstore-api/api/v1"
 
 	aws2 "github.com/aws/aws-sdk-go-v2/aws"
+	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -503,7 +504,7 @@ func (b *Blob) getS3Config(ctx context.Context, debug bool) (aws2.Config, error)
 	return config.LoadDefaultConfig(ctx, loadOptions...)
 }
 
-func configureTLS(caCert []byte, insecureTLS bool) (*http.Client, error) {
+func configureTLS(caCert []byte, insecureTLS bool) (*awshttp.BuildableClient, error) {
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: insecureTLS,
 	}
@@ -514,12 +515,12 @@ func configureTLS(caCert []byte, insecureTLS bool) (*http.Client, error) {
 		}
 		tlsConfig.RootCAs = caCertPool
 	}
-	rt := http.DefaultTransport.(*http.Transport).Clone()
-	rt.TLSClientConfig = tlsConfig
+	buildableClient := awshttp.NewBuildableClient().WithTransportOptions(func(tr *http.Transport) {
+		tr.TLSClientConfig = tlsConfig
+	})
+	// https://docs.aws.amazon.com/sdk-for-go/v2/developer-guide/configure-http.html#transport
 
-	return &http.Client{
-		Transport: rt,
-	}, nil
+	return buildableClient, nil
 }
 
 func (b *Blob) SetPathAsDir(ctx context.Context, path string) error {

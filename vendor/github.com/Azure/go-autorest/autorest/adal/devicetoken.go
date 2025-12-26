@@ -24,9 +24,10 @@ package adal
 */
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -101,14 +102,21 @@ type deviceToken struct {
 
 // InitiateDeviceAuth initiates a device auth flow. It returns a DeviceCode
 // that can be used with CheckForUserCompletion or WaitForUserCompletion.
+// Deprecated: use InitiateDeviceAuthWithContext() instead.
 func InitiateDeviceAuth(sender Sender, oauthConfig OAuthConfig, clientID, resource string) (*DeviceCode, error) {
+	return InitiateDeviceAuthWithContext(context.Background(), sender, oauthConfig, clientID, resource)
+}
+
+// InitiateDeviceAuthWithContext initiates a device auth flow. It returns a DeviceCode
+// that can be used with CheckForUserCompletion or WaitForUserCompletion.
+func InitiateDeviceAuthWithContext(ctx context.Context, sender Sender, oauthConfig OAuthConfig, clientID, resource string) (*DeviceCode, error) {
 	v := url.Values{
 		"client_id": []string{clientID},
 		"resource":  []string{resource},
 	}
 
 	s := v.Encode()
-	body := ioutil.NopCloser(strings.NewReader(s))
+	body := io.NopCloser(strings.NewReader(s))
 
 	req, err := http.NewRequest(http.MethodPost, oauthConfig.DeviceCodeEndpoint.String(), body)
 	if err != nil {
@@ -117,13 +125,13 @@ func InitiateDeviceAuth(sender Sender, oauthConfig OAuthConfig, clientID, resour
 
 	req.ContentLength = int64(len(s))
 	req.Header.Set(contentType, mimeTypeFormPost)
-	resp, err := sender.Do(req)
+	resp, err := sender.Do(req.WithContext(ctx))
 	if err != nil {
 		return nil, fmt.Errorf("%s %s: %s", logPrefix, errCodeSendingFails, err.Error())
 	}
 	defer resp.Body.Close()
 
-	rb, err := ioutil.ReadAll(resp.Body)
+	rb, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("%s %s: %s", logPrefix, errCodeHandlingFails, err.Error())
 	}
@@ -151,7 +159,14 @@ func InitiateDeviceAuth(sender Sender, oauthConfig OAuthConfig, clientID, resour
 
 // CheckForUserCompletion takes a DeviceCode and checks with the Azure AD OAuth endpoint
 // to see if the device flow has: been completed, timed out, or otherwise failed
+// Deprecated: use CheckForUserCompletionWithContext() instead.
 func CheckForUserCompletion(sender Sender, code *DeviceCode) (*Token, error) {
+	return CheckForUserCompletionWithContext(context.Background(), sender, code)
+}
+
+// CheckForUserCompletionWithContext takes a DeviceCode and checks with the Azure AD OAuth endpoint
+// to see if the device flow has: been completed, timed out, or otherwise failed
+func CheckForUserCompletionWithContext(ctx context.Context, sender Sender, code *DeviceCode) (*Token, error) {
 	v := url.Values{
 		"client_id":  []string{code.ClientID},
 		"code":       []string{*code.DeviceCode},
@@ -160,7 +175,7 @@ func CheckForUserCompletion(sender Sender, code *DeviceCode) (*Token, error) {
 	}
 
 	s := v.Encode()
-	body := ioutil.NopCloser(strings.NewReader(s))
+	body := io.NopCloser(strings.NewReader(s))
 
 	req, err := http.NewRequest(http.MethodPost, code.OAuthConfig.TokenEndpoint.String(), body)
 	if err != nil {
@@ -169,13 +184,13 @@ func CheckForUserCompletion(sender Sender, code *DeviceCode) (*Token, error) {
 
 	req.ContentLength = int64(len(s))
 	req.Header.Set(contentType, mimeTypeFormPost)
-	resp, err := sender.Do(req)
+	resp, err := sender.Do(req.WithContext(ctx))
 	if err != nil {
 		return nil, fmt.Errorf("%s %s: %s", logPrefix, errTokenSendingFails, err.Error())
 	}
 	defer resp.Body.Close()
 
-	rb, err := ioutil.ReadAll(resp.Body)
+	rb, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("%s %s: %s", logPrefix, errTokenHandlingFails, err.Error())
 	}
@@ -207,18 +222,29 @@ func CheckForUserCompletion(sender Sender, code *DeviceCode) (*Token, error) {
 	case "code_expired":
 		return nil, ErrDeviceCodeExpired
 	default:
+		// return a more meaningful error message if available
+		if token.ErrorDescription != nil {
+			return nil, fmt.Errorf("%s %s: %s", logPrefix, *token.Error, *token.ErrorDescription)
+		}
 		return nil, ErrDeviceGeneric
 	}
 }
 
 // WaitForUserCompletion calls CheckForUserCompletion repeatedly until a token is granted or an error state occurs.
 // This prevents the user from looping and checking against 'ErrDeviceAuthorizationPending'.
+// Deprecated: use WaitForUserCompletionWithContext() instead.
 func WaitForUserCompletion(sender Sender, code *DeviceCode) (*Token, error) {
+	return WaitForUserCompletionWithContext(context.Background(), sender, code)
+}
+
+// WaitForUserCompletionWithContext calls CheckForUserCompletion repeatedly until a token is granted or an error
+// state occurs.  This prevents the user from looping and checking against 'ErrDeviceAuthorizationPending'.
+func WaitForUserCompletionWithContext(ctx context.Context, sender Sender, code *DeviceCode) (*Token, error) {
 	intervalDuration := time.Duration(*code.Interval) * time.Second
 	waitDuration := intervalDuration
 
 	for {
-		token, err := CheckForUserCompletion(sender, code)
+		token, err := CheckForUserCompletionWithContext(ctx, sender, code)
 
 		if err == nil {
 			return token, nil
@@ -237,6 +263,11 @@ func WaitForUserCompletion(sender Sender, code *DeviceCode) (*Token, error) {
 			return nil, fmt.Errorf("%s Error waiting for user to complete device flow. Server told us to slow_down too much", logPrefix)
 		}
 
-		time.Sleep(waitDuration)
+		select {
+		case <-time.After(waitDuration):
+			// noop
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
 	}
 }

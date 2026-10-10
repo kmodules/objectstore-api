@@ -473,7 +473,8 @@ func (b *Blob) getS3Config(ctx context.Context, debug bool) (aws2.Config, error)
 
 	if debug {
 		loadOptions = append(loadOptions, config.WithClientLogMode(
-			aws2.LogRetries|aws2.LogRequestWithBody|aws2.LogResponseWithBody))
+			aws2.LogRetries|aws2.LogRequestWithBody|aws2.LogResponseWithBody,
+		))
 	}
 
 	if b.secret != nil {
